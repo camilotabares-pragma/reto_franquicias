@@ -15,3 +15,13 @@ spring:
       path: /h2
   profiles:
     include:
+resilience4j:
+  circuitbreaker:
+    instances:
+      mongoCircuitBreaker:
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 10          # latest 10 petitions
+        minimumNumberOfCalls: 5         # min calls
+        failureRateThreshold: 50        # 50% openCircuit
+        waitDurationInOpenState: 15s    # stays open for 15 seconds to let Mongo breathe
+        permittedNumberOfCallsInHalfOpenState: 3 # test calls in half-open state

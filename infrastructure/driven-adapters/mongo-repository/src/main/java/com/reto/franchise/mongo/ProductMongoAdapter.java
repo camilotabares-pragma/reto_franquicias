@@ -1,9 +1,12 @@
 package com.reto.franchise.mongo;
 
+import com.reto.franchise.model.exception.BusinessException;
+import com.reto.franchise.model.franchise.Franchise;
 import com.reto.franchise.model.product.Product;
 import com.reto.franchise.model.product.gateways.ProductRepository;
 import com.reto.franchise.mongo.mapper.FranchiseMapper;
 import com.reto.franchise.mongo.repository.FranchiseMongoDBRepository;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
@@ -17,12 +20,14 @@ public class ProductMongoAdapter implements ProductRepository {
     private final FranchiseMapper mapper;
 
     @Override
+    @CircuitBreaker(name = "mongoCircuitBreaker", fallbackMethod = "saveFallback")
     public Mono<Product> save(Product product) {
         // As with the branch, persistence is handled from the root aggregate
         return Mono.just(product);
     }
 
     @Override
+    @CircuitBreaker(name = "mongoCircuitBreaker", fallbackMethod = "finByIdFallback")
     public Mono<Product> findById(Integer id) {
         return mongoRepository.findAll()
                 // Flatten the franchises to obtain all existing branches
@@ -35,5 +40,14 @@ public class ProductMongoAdapter implements ProductRepository {
                 .filter(productDoc -> productDoc.getId().equals(id))
                 .next() // Convert the Flux into a Mono with the found element
                 .map(mapper::toProductDomain); // Translate to the domain
+    }
+
+    public Mono<Franchise> finByIdFallback(String id, Throwable error) {
+        return Mono.error(new BusinessException("Base de datos no disponible temporalmente. Intente más tarde."));
+    }
+
+    public Mono<Franchise> saveFallback(Franchise franchise, Throwable error) {
+        System.out.println("🚨 Fallo al guardar la franquicia: " + franchise.getName());
+        return Mono.error(new BusinessException("Error de conexión al guardar en la base de datos."));
     }
 }

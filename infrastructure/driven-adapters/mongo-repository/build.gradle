@@ -11,4 +11,11 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
     annotationProcessor 'org.mapstruct:mapstruct-processor:1.5.5.Final'
     annotationProcessor 'org.projectlombok:lombok'
+
+    // Resilience4j para Spring Boot 3 y WebFlux
+    implementation 'io.github.resilience4j:resilience4j-spring-boot3:2.2.0'
+    implementation 'io.github.resilience4j:resilience4j-reactor:2.2.0'
+
+    // REQUISITO OBLIGATORIO: Spring AOP para que funcionen las anotaciones
+    implementation 'org.springframework.boot:spring-boot-starter-aop'
 }
