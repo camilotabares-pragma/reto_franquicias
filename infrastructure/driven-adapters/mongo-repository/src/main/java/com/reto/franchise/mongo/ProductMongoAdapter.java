@@ -18,22 +18,22 @@ public class ProductMongoAdapter implements ProductRepository {
 
     @Override
     public Mono<Product> save(Product product) {
-        // Al igual que la sucursal, la persistencia se maneja desde el agregado raíz
+        // As with the branch, persistence is handled from the root aggregate
         return Mono.just(product);
     }
 
     @Override
     public Mono<Product> findById(Integer id) {
         return mongoRepository.findAll()
-                // Aplanamos las franquicias para obtener todas las sucursales existentes
+                // Flatten the franchises to obtain all existing branches
                 .flatMap(franchiseDoc -> franchiseDoc.getBranches() != null ?
                         Flux.fromIterable(franchiseDoc.getBranches()) : Flux.empty())
-                // Aplanamos las sucursales para obtener todos los productos existentes
+                // Flatten the branches to obtain all existing products
                 .flatMap(branchDoc -> branchDoc.getProducts() != null ?
                         Flux.fromIterable(branchDoc.getProducts()) : Flux.empty())
-                // Filtramos por el ID que buscamos
+                // Filter by the target ID
                 .filter(productDoc -> productDoc.getId().equals(id))
-                .next() // Convertimos el Flux en un Mono con el elemento encontrado
-                .map(mapper::toProductDomain); // Traducimos al dominio
+                .next() // Convert the Flux into a Mono with the found element
+                .map(mapper::toProductDomain); // Translate to the domain
     }
 }

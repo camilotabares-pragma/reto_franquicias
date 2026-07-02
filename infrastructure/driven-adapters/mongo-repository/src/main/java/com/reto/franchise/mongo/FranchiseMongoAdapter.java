@@ -13,19 +13,19 @@ import reactor.core.publisher.Mono;
 public class FranchiseMongoAdapter implements FranchiseRepository {
 
     private final FranchiseMongoDBRepository mongoRepository;
-    private final FranchiseMapper mapper; // ¡Inyectamos nuestra nueva herramienta!
+    private final FranchiseMapper mapper; // Inject the mapper tool!
 
     @Override
     public Mono<Franchise> save(Franchise franchise) {
         return Mono.just(franchise)
-                .map(mapper::toDocument) // MapStruct hace la magia
-                .flatMap(mongoRepository::save) // Guardamos en base de datos
-                .map(mapper::toDomain); // MapStruct traduce de vuelta
+                .map(mapper::toDocument) // MapStruct does the magic
+                .flatMap(mongoRepository::save) // Save to the database
+                .map(mapper::toDomain); // MapStruct translates back
     }
 
     @Override
     public Mono<Franchise> findById(String id) {
         return mongoRepository.findById(id)
-                .map(mapper::toDomain); // MapStruct traduce de vuelta
+                .map(mapper::toDomain); // MapStruct translates back
     }
 }

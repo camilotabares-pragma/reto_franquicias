@@ -17,21 +17,21 @@ public class BranchMongoAdapter implements BranchRepository {
 
     @Override
     public Mono<Branch> save(Branch branch) {
-        // En nuestro diseño de agregados NoSQL, las operaciones de escritura
-        // de sucursales se orquestan desde la raíz (Franchise).
-        // Retornamos el objeto para cumplir con la firma del puerto del dominio.
+        // In this NoSQL aggregate design, branch write operations
+        // are orchestrated from the root (Franchise).
+        // We return the object to satisfy the domain port contract.
         return Mono.just(branch);
     }
 
     @Override
     public Mono<Branch> findById(String id) {
-        // Buscamos en todas las franquicias la sucursal que tenga este ID
+        // Search all franchises for the branch with this ID
         return mongoRepository.findAll()
                 .flatMap(franchiseDoc -> franchiseDoc.getBranches() != null ?
                         reactor.core.publisher.Flux.fromIterable(franchiseDoc.getBranches()) :
                         reactor.core.publisher.Flux.empty())
                 .filter(branchDoc -> branchDoc.getId().equals(id))
-                .next() // Toma la primera coincidencia (lo vuelve Mono)
-                .map(mapper::toBranchDomain); // Traduce de infraestructura a dominio
+                .next() // Take the first match (turn it into a Mono)
+                .map(mapper::toBranchDomain); // Translate from infrastructure to domain
     }
 }

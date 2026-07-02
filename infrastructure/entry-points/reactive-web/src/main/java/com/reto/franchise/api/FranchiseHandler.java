@@ -18,7 +18,7 @@ public class FranchiseHandler {
     private final FranchiseUseCase franchiseUseCase;
 
     /**
-     * Criterio Funcional 1: Crear una nueva franquicia
+     * Functional Criterion 1: Create a new franchise
      */
     public Mono<ServerResponse> createFranchise(ServerRequest request) {
         return request.bodyToMono(Franchise.class)
@@ -29,24 +29,24 @@ public class FranchiseHandler {
     }
 
     /**
-     * Criterio Funcional 2: Agregar sucursal a una franquicia
+     * Functional Criterion 2: Add a branch to a franchise
      */
     public Mono<ServerResponse> addBranchToFranchise(ServerRequest request) {
-        // 1. Extraemos el ID de la franquicia desde la URL
+        // 1. Extract the franchise ID from the URL
         String franchiseId = request.pathVariable("franchiseId");
 
-        // 2. Leemos la sucursal del cuerpo de la petición
+        // 2. Read the branch from the request body
         return request.bodyToMono(Branch.class)
-                // 3. Llamamos a nuestro caso de uso
+                // 3. Call the use case
                 .flatMap(newBranch -> franchiseUseCase.addBranchToFranchise(franchiseId, newBranch))
-                // 4. Respondemos con la franquicia actualizada
+                // 4. Respond with the updated franchise
                 .flatMap(updatedFranchise -> ServerResponse.ok()
                         .contentType(MediaType.APPLICATION_JSON)
                         .bodyValue(updatedFranchise));
     }
 
     /**
-     * Endpoint de consulta para ver la franquicia y sus asociaciones
+     * Query endpoint to view the franchise and its associations
      */
     public Mono<ServerResponse> getFranchiseById(ServerRequest request) {
         String franchiseId = request.pathVariable("franchiseId");
@@ -55,29 +55,29 @@ public class FranchiseHandler {
                 .flatMap(franchise -> ServerResponse.ok()
                         .contentType(MediaType.APPLICATION_JSON)
                         .bodyValue(franchise))
-                .switchIfEmpty(ServerResponse.notFound().build()); // 404 si no existe
+                .switchIfEmpty(ServerResponse.notFound().build()); // 404 if it does not exist
     }
 
     /**
-     * Criterio Funcional 3: Agregar producto a una sucursal específica
+     * Functional Criterion 3: Add a product to a specific branch
      */
     public Mono<ServerResponse> addProductToBranch(ServerRequest request) {
-        // 1. Extraemos los dos IDs que vienen en la URL
+        // 1. Extract the two IDs from the URL
         String franchiseId = request.pathVariable("franchiseId");
         String branchId = request.pathVariable("branchId");
 
-        // 2. Leemos el producto que viene en el JSON del Body
+        // 2. Read the product coming in the request body JSON
         return request.bodyToMono(Product.class)
-                // 3. Llamamos al método que ya programamos en el Caso de Uso
+                // 3. Call the method implemented in the use case
                 .flatMap(newProduct -> franchiseUseCase.addProductToBranch(franchiseId, branchId, newProduct))
-                // 4. Devolvemos la franquicia con el árbol actualizado
+                // 4. Return the franchise with the updated tree
                 .flatMap(updatedFranchise -> ServerResponse.ok()
                         .contentType(MediaType.APPLICATION_JSON)
                         .bodyValue(updatedFranchise));
     }
 
     /**
-     * Criterio Funcional 4: Eliminar un producto
+     * Functional Criterion 4: Delete a product
      */
     public Mono<ServerResponse> deleteProduct(ServerRequest request) {
         String franchiseId = request.pathVariable("franchiseId");
@@ -91,14 +91,14 @@ public class FranchiseHandler {
     }
 
     /**
-     * Criterio Funcional 5: Actualizar stock de un producto
+     * Functional Criterion 5: Update a product's stock
      */
     public Mono<ServerResponse> updateProductStock(ServerRequest request) {
         String franchiseId = request.pathVariable("franchiseId");
         String branchId = request.pathVariable("branchId");
         String productId = request.pathVariable("productId");
 
-        // Leemos un JSON con el campo "stock" para actualizarlo
+        // Read a JSON payload with the "stock" field to update it
         return request.bodyToMono(Product.class)
                 .flatMap(productBody -> franchiseUseCase.updateProductStock(franchiseId, branchId, productId, productBody.getStock()))
                 .flatMap(updatedFranchise -> ServerResponse.ok()
@@ -107,7 +107,7 @@ public class FranchiseHandler {
     }
 
     /**
-     * Criterio Funcional 6: Obtener el producto con más stock por sucursal
+     * Functional Criterion 6: Get the highest-stock product per branch
      */
     public Mono<ServerResponse> getMaxStockProducts(ServerRequest request) {
         String franchiseId = request.pathVariable("franchiseId");
@@ -120,13 +120,13 @@ public class FranchiseHandler {
     }
 
     /**
-     * Criterio Funcional 7: Actualizar nombre de franquicia
+     * Functional Criterion 7: Update franchise name
      */
     public Mono<ServerResponse> updateFranchiseName(ServerRequest request) {
         String franchiseId = request.pathVariable("franchiseId");
 
-        // En este caso, asumimos que nos envían un JSON con un campo "name"
-        // Para simplificar, lo leemos como un Franchise (aunque solo usemos el nombre)
+        // In this case, assume a JSON payload with a "name" field
+        // To keep it simple, read it as a Franchise (even though only the name is used)
         return request.bodyToMono(Franchise.class)
                 .flatMap(franchiseBody -> franchiseUseCase.updateFranchiseName(franchiseId, franchiseBody.getName()))
                 .flatMap(updatedFranchise -> ServerResponse.ok()
@@ -135,13 +135,13 @@ public class FranchiseHandler {
     }
 
     /**
-     * Endpoint para actualizar el nombre de una sucursal
+     * Endpoint to update a branch name
      */
     public Mono<ServerResponse> updateBranchName(ServerRequest request) {
         String franchiseId = request.pathVariable("franchiseId");
         String branchId = request.pathVariable("branchId");
 
-        // Usamos la clase Branch para mapear el JSON que contiene el nuevo "name"
+        // Use the Branch class to map the JSON that contains the new "name"
         return request.bodyToMono(Branch.class)
                 .flatMap(branchBody -> franchiseUseCase.updateBranchName(franchiseId, branchId, branchBody.getName()))
                 .flatMap(updatedFranchise -> ServerResponse.ok()
@@ -150,14 +150,14 @@ public class FranchiseHandler {
     }
 
     /**
-     * Endpoint para actualizar el nombre de un producto
+     * Endpoint to update a product name
      */
     public Mono<ServerResponse> updateProductName(ServerRequest request) {
         String franchiseId = request.pathVariable("franchiseId");
         String branchId = request.pathVariable("branchId");
         String productId = request.pathVariable("productId");
 
-        // Usamos la clase Product para mapear el JSON que contiene el nuevo "name"
+        // Use the Product class to map the JSON that contains the new "name"
         return request.bodyToMono(Product.class)
                 .flatMap(productBody -> franchiseUseCase.updateProductName(franchiseId, branchId, productId, productBody.getName()))
                 .flatMap(updatedFranchise -> ServerResponse.ok()

@@ -19,31 +19,31 @@ import java.util.stream.Stream;
 @RequiredArgsConstructor
 public class FranchiseUseCase {
 
-    // Inyectamos nuestro puerto (interfaz).
-    // El caso de uso no sabe que esto será MongoDB,
-    // solo sabe que puede guardar y buscar.
+    // Inject the port (interface).
+    // The use case does not know this will be MongoDB;
+    // it only knows it can save and find data.
     private final FranchiseRepository franchiseRepository;
 
     /**
-     * Criterio Funcional 1: Crear una nueva franquicia
+     * Functional Criterion 1: Create a new franchise
      */
     public Mono<Franchise> createFranchise (Franchise franchise){
         return franchiseRepository.save(franchise);
     }
 
     /**
-     * Criterio Funcional 2: Agregar sucursal a una franquicia
+     * Functional Criterion 2: Add a branch to a franchise
      */
     public Mono<Franchise> addBranchToFranchise(String franchiseId, Branch newBranch) {
         return franchiseRepository.findById(franchiseId)
                 .map(franchise -> {
-                    // 1. Obtenemos la lista actual o una lista vacía inmutable
+                    // 1. Get the current list or an immutable empty list
                     var currentBranches = Optional.ofNullable(franchise.getBranches())
                             .orElse(Collections.emptyList());
-                    // 2. Creamos una NUEVA lista uniendo la anterior con la nueva sucursal (usando Streams)
+                    // 2. Create a NEW list by merging the existing one with the new branch (using Streams)
                     var updatedBranches = Stream.concat(currentBranches.stream(), Stream.of(newBranch))
                             .collect(Collectors.toList());
-                    // 3. Retornamos una NUEVA instancia de Franchise usando toBuilder (Inmutabilidad)
+                    // 3. Return a NEW Franchise instance using toBuilder (immutability)
                     return franchise.toBuilder()
                             .branches(updatedBranches)
                             .build();
@@ -54,24 +54,24 @@ public class FranchiseUseCase {
     }
 
     /**
-     * Criterio Funcional 3: Agregar producto a una sucursal específica (Desde la raíz)
+     * Functional Criterion 3: Add a product to a specific branch (from the root)
      */
     public Mono<Franchise> addProductToBranch(String franchiseId, String branchId, com.reto.franchise.model.product.Product newProduct) {
         return franchiseRepository.findById(franchiseId)
                 .map(franchise -> {
-                    // 1. Obtenemos las sucursales de la franquicia
+                    // 1. Get the franchise branches
                     var currentBranches = java.util.Optional.ofNullable(franchise.getBranches())
                             .orElse(java.util.Collections.emptyList());
 
-                    // 2. Mapeamos las sucursales para encontrar la que queremos modificar
+                    // 2. Map the branches to find the one that must be modified
                     var updatedBranches = currentBranches.stream()
                             .map(branch -> {
-                                // Si es la sucursal que buscamos, aplicamos TU lógica
+                                // If this is the target branch, apply the update logic
                                 if (branch.getId().equals(branchId)) {
                                     var currentProducts = java.util.Optional.ofNullable(branch.getProducts())
                                             .orElse(java.util.Collections.emptyList());
 
-                                    // Tu lógica exacta con Streams
+                                    // Your exact logic with Streams
                                     var updatedProducts = java.util.stream.Stream.concat(currentProducts.stream(), java.util.stream.Stream.of(newProduct))
                                             .collect(java.util.stream.Collectors.toList());
 
@@ -79,22 +79,22 @@ public class FranchiseUseCase {
                                             .products(updatedProducts)
                                             .build();
                                 }
-                                // Si no es la sucursal, la devolvemos intacta
+                                // If it is not the branch, return it unchanged
                                 return branch;
                             })
                             .collect(java.util.stream.Collectors.toList());
 
-                    // 3. Guardamos las sucursales actualizadas en la franquicia
+                    // 3. Store the updated branches in the franchise
                     return franchise.toBuilder()
                             .branches(updatedBranches)
                             .build();
                 })
-                .flatMap(franchiseRepository::save) // Guardamos TODO el árbol en Mongo
+                .flatMap(franchiseRepository::save) // Save the entire tree in Mongo
                 .switchIfEmpty(Mono.error(new BusinessException("No se encontró la franquicia con ID: " + franchiseId)));
     }
 
     /**
-     * Criterio Funcional 4: Eliminar un producto de una sucursal específica
+     * Functional Criterion 4: Remove a product from a specific branch
      */
     public Mono<Franchise> deleteProductFromBranch(String franchiseId, String branchId, String productId) {
         return franchiseRepository.findById(franchiseId)
@@ -108,7 +108,7 @@ public class FranchiseUseCase {
                                     var currentProducts = java.util.Optional.ofNullable(branch.getProducts())
                                             .orElse(java.util.Collections.emptyList());
 
-                                    // Filtramos para dejar por fuera el producto que coincida con el ID
+                                    // Filter out the product that matches the ID
                                     var updatedProducts = currentProducts.stream()
                                             .filter(product -> !product.getId().equals(productId))
                                             .collect(java.util.stream.Collectors.toList());
@@ -131,20 +131,20 @@ public class FranchiseUseCase {
 
 
     /**
-     * Criterio Funcional 5: Modificar el stock de un producto en una sucursal
+     * Functional Criterion 5: Modify a product's stock in a branch
      */
     /**
-     * Criterio Funcional 5: Modificar el stock de un producto (100% Funcional)
+     * Functional Criterion 5: Modify a product's stock (100% functional)
      */
     public Mono<Franchise> updateProductStock(String franchiseId, String branchId, String productId, Integer newStock) {
 
-        // 1. Iniciamos el flujo reactivo con el valor recibido (soporta nulls)
+        // 1. Start the reactive flow with the received value (supports nulls)
         return Mono.justOrEmpty(newStock)
-                // 2. Filtramos: Dejamos pasar el flujo SOLO si el stock es mayor o igual a 0
+                // 2. Filter: allow the flow to continue ONLY if the stock is greater than or equal to 0
                 .filter(stock -> stock >= 0)
-                // 3. Si era null o negativo, el filtro lo bloquea y entra aquí a lanzar el error 400
+                // 3. If it is null or negative, the filter blocks it and the 400 error is raised here
                 .switchIfEmpty(Mono.error(new InvalidDataException("El stock es inválido o no puede ser negativo: " + newStock)))
-                // 4. Si el dato es válido, continuamos encadenando el llamado a la base de datos
+                // 4. If the data is valid, continue chaining the database call
                 .flatMap(validStock -> franchiseRepository.findById(franchiseId))
                 .map(franchise -> {
                     var currentBranches = java.util.Optional.ofNullable(franchise.getBranches())
@@ -159,7 +159,7 @@ public class FranchiseUseCase {
                                     var updatedProducts = currentProducts.stream()
                                             .map(product -> {
                                                 if (product.getId().equals(productId)) {
-                                                    // Usamos el 'newStock' validado
+                                                    // Use the validated 'newStock'
                                                     return product.toBuilder()
                                                             .stock(newStock)
                                                             .build();
@@ -181,35 +181,35 @@ public class FranchiseUseCase {
                             .build();
                 })
                 .flatMap(franchiseRepository::save)
-                // Y aquí queda tu validación del 404 por si no existía la franquicia
+                // And here is the 404 validation in case the franchise did not exist
                 .switchIfEmpty(Mono.error(new BusinessException("No se encontró la franquicia con ID: " + franchiseId)));
     }
 
 
 
     /**
-     * Criterio Funcional 6: Modificar el stock de un producto
+     * Functional Criterion 6: Modify a product's stock
      */
     public Mono<Franchise> getProductMaxStock(String franchiseId) {
         return franchiseRepository.findById(franchiseId)
                 .map(franchise -> {
-                    // 1. Obtenemos las sucursales de forma segura
+                    // 1. Get the branches safely
                     var currentBranches = java.util.Optional.ofNullable(franchise.getBranches())
                             .orElse(java.util.Collections.emptyList());
 
-                    // 2. Transformamos CADA sucursal para dejarle solo su producto con más stock
+                    // 2. Transform EVERY branch so it keeps only its highest-stock product
                     var branchesWithMaxProduct = currentBranches.stream()
                             .map(branch -> {
-                                // a. Obtenemos los productos de esta sucursal de forma segura
+                                // a. Get the products for this branch safely
                                 var currentProducts = java.util.Optional.ofNullable(branch.getProducts())
                                         .orElse(java.util.Collections.emptyList());
 
-                                // b. Buscamos el producto ganador. max() nos devuelve una "caja" (Optional)
+                                // b. Find the winning product. max() returns a "box" (Optional)
                                 var winnerProductOpt = currentProducts.stream()
                                         .max(java.util.Comparator.comparing(com.reto.franchise.model.product.Product::getStock));
 
-                                // c. Si hay ganador, clonamos la sucursal inyectando una lista de 1 solo elemento.
-                                // Si no hay ganador (Optional vacío), devolvemos la sucursal intacta (.orElse).
+                                // c. If there is a winner, clone the branch with a one-item list.
+                                // If there is no winner (empty Optional), return the branch unchanged (.orElse).
                                 return winnerProductOpt
                                         .map(winner -> branch.toBuilder()
                                                 .products(java.util.List.of(winner))
@@ -218,8 +218,8 @@ public class FranchiseUseCase {
                             })
                             .collect(Collectors.toList());
 
-                    // 3. (EL PASO FINAL) Clonamos la franquicia original, le inyectamos nuestra
-                    // nueva lista de sucursales procesadas y sellamos la caja.
+                    // 3. (THE FINAL STEP) Clone the original franchise and inject the
+                    // new list of processed branches, and seal the box.
                     return franchise.toBuilder()
                             .branches(branchesWithMaxProduct)
                             .build();
@@ -229,19 +229,19 @@ public class FranchiseUseCase {
 
 
     /**
-     * Criterio Funcional 7: Actualizar nombre de franquicia
+     * Functional Criterion 7: Update franchise name
      */
     public Mono<Franchise> updateFranchiseName(String franchiseId, String newName) {
         return franchiseRepository.findById(franchiseId)
                 .flatMap(franchise -> {
                     franchise.setName(newName);
-                    return franchiseRepository.save(franchise); // Guardamos con el nuevo nombre
+                    return franchiseRepository.save(franchise); // Save with the new name
                 })
                 .switchIfEmpty(Mono.error(new BusinessException("No se encontró la franquicia con ID: " + franchiseId)));
     }
 
     /**
-     * Actualizar el nombre de una sucursal
+     * Update a branch name
      */
     public Mono<Franchise> updateBranchName(String franchiseId, String branchId, String newName) {
         return franchiseRepository.findById(franchiseId)
@@ -252,7 +252,7 @@ public class FranchiseUseCase {
                     var updatedBranches = currentBranches.stream()
                             .map(branch -> {
                                 if (branch.getId().equals(branchId)) {
-                                    // Clonamos la sucursal inyectando solo el nuevo nombre
+                                    // Clone the branch with only the new name injected
                                     return branch.toBuilder().name(newName).build();
                                 }
                                 return branch;
@@ -266,7 +266,7 @@ public class FranchiseUseCase {
     }
 
     /**
-     * Actualizar el nombre de un producto
+     * Update a product name
      */
     public Mono<Franchise> updateProductName(String franchiseId, String branchId, String productId, String newName) {
         return franchiseRepository.findById(franchiseId)
@@ -283,7 +283,7 @@ public class FranchiseUseCase {
                                     var updatedProducts = currentProducts.stream()
                                             .map(product -> {
                                                 if (product.getId().equals(productId)) {
-                                                    // Clonamos el producto inyectando solo el nuevo nombre
+                                                    // Clone the product with only the new name injected
                                                     return product.toBuilder().name(newName).build();
                                                 }
                                                 return product;
@@ -302,7 +302,7 @@ public class FranchiseUseCase {
                 .switchIfEmpty(Mono.error(new BusinessException("No se encontró la franquicia con ID: " + franchiseId)));
     }
 
-    //Otro
+    // Another helper
     public Mono<Franchise> getFranchiseById(String id) {
         return franchiseRepository.findById(id)
                 .switchIfEmpty(Mono.error(new BusinessException("No se encontró la franquicia con ID: " + id)));

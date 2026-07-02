@@ -4,9 +4,9 @@ import com.reto.franchise.model.franchise.Franchise;
 import reactor.core.publisher.Mono;
 
 public interface FranchiseRepository {
-    // Contrato para crear o actualizar una franquicia
+    // Contract for creating or updating a franchise
     Mono<Franchise> save (Franchise franchise);
 
-    // Contrato para buscar una franquicia por su ID
+    // Contract for finding a franchise by its ID
     Mono<Franchise> findById(String id);
 }

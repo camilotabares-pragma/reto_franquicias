@@ -6,5 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface FranchiseMongoDBRepository extends ReactiveMongoRepository<FranchiseDocument, String> {
-    // Al dejarla vacía, ya heredamos todo el poder de Mongo Reactivo
+    // By leaving it empty, the full power of Reactive Mongo is inherited
 }

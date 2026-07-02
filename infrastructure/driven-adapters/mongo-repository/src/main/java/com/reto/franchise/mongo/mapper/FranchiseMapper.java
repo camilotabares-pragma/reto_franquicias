@@ -11,11 +11,11 @@ import org.mapstruct.Mapper;
 @Mapper(componentModel = "spring")
 public interface FranchiseMapper {
 
-    // Mapeos principales
+    // Main mappings
     FranchiseDocument toDocument(Franchise franchise);
     Franchise toDomain(FranchiseDocument document);
 
-    // Mapeos anidados (MapStruct los usará automáticamente para las listas)
+    // Nested mappings (MapStruct will use them automatically for lists)
     BranchDocument toBranchDocument(Branch branch);
     Branch toBranchDomain(BranchDocument document);
 

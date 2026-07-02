@@ -22,18 +22,18 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class) // Habilita el uso de Mockito
+@ExtendWith(MockitoExtension.class) // Enable Mockito support
 class FranchiseUseCaseTest {
 
     @Mock
-    private FranchiseRepository repository; // Simulamos la base de datos (No queremos tocar Mongo en los tests)
+    private FranchiseRepository repository; // Simulate the database without touching Mongo in tests
 
     @InjectMocks
-    private FranchiseUseCase useCase; // Inyectamos el mock dentro de nuestro caso de uso real
+    private FranchiseUseCase useCase; // Inject the mock into the real use case
 
     @Test
     void shouldGetFranchiseByIdSuccessfully() {
-        // 1. ARRANGE (Preparar los datos de prueba)
+        // 1. ARRANGE (Prepare the test data)
         String franchiseId = "6a457571";
         Franchise mockFranchise = Franchise.builder()
                 .id(franchiseId)
@@ -41,54 +41,54 @@ class FranchiseUseCaseTest {
                 .branches(List.of())
                 .build();
 
-        // Le decimos al mock: "Cuando alguien llame a findById, devuelve este Mono con la franquicia"
+        // Tell the mock: "When someone calls findById, return this Mono with the franchise"
         when(repository.findById(franchiseId)).thenReturn(Mono.just(mockFranchise));
 
-        // 2. ACT (Ejecutar el método)
+        // 2. ACT (Execute the method)
         Mono<Franchise> result = useCase.getFranchiseById(franchiseId);
 
-        // 3. ASSERT (Verificar usando StepVerifier)
+        // 3. ASSERT (Verify using StepVerifier)
         StepVerifier.create(result)
-                // Esperamos que el siguiente elemento emitido cumpla con esta condición
+                // Expect the next emitted element to satisfy this condition
                 .expectNextMatches(franchise -> franchise.getName().equals("Franquicia Test")
                         && franchise.getId().equals(franchiseId))
-                // Esperamos que el flujo termine correctamente (sin errores)
+                // Expect the flow to complete successfully (without errors)
                 .verifyComplete();
 
-        // Opcional: Verificar que el repositorio fue llamado exactamente 1 vez
+        // Optional: verify that the repository was called exactly once
         verify(repository).findById(franchiseId);
     }
 
     @Test
     void shouldThrowBusinessExceptionWhenFranchiseNotFound() {
-        // 1. ARRANGE (Preparar)
+        // 1. ARRANGE (Prepare)
         String fakeId = "9999";
 
-        // Le decimos al mock: "Devuelve un Mono vacío simulando que Mongo no encontró nada"
+        // Tell the mock: "Return an empty Mono to simulate Mongo not finding anything"
         when(repository.findById(anyString())).thenReturn(Mono.empty());
 
-        // 2. ACT (Ejecutar)
+        // 2. ACT (Execute)
         Mono<Franchise> result = useCase.getFranchiseById(fakeId);
 
-        // 3. ASSERT (Verificar el error con StepVerifier)
+        // 3. ASSERT (Verify the error with StepVerifier)
         StepVerifier.create(result)
-                // Esperamos que NO emita datos y lance directamente un error de tipo BusinessException
+                // Expect it to emit no data and immediately throw a BusinessException
                 .expectErrorMatches(throwable -> throwable instanceof BusinessException &&
                         throwable.getMessage().contains("No se encontró la franquicia"))
-                // Aquí usamos verify() en lugar de verifyComplete() porque terminó en error, no en éxito
+                // We use verify() instead of verifyComplete() because it ended in error, not success
                 .verify();
     }
 
     @Test
     void shouldCreateFranchiseSuccessfully() {
-        // 1. ARRANGE (Preparar los datos de prueba)
+        // 1. ARRANGE (Prepare the test data)
         Franchise newFranchise = franchise("fr-1", "Franquicia Nueva");
         when(repository.save(any(Franchise.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
-        // 2. ACT (Ejecutar el método)
+        // 2. ACT (Execute the method)
         Mono<Franchise> result = useCase.createFranchise(newFranchise);
 
-        // 3. ASSERT (Verificar usando StepVerifier)
+        // 3. ASSERT (Verify using StepVerifier)
         StepVerifier.create(result)
                 .expectNextMatches(franchise -> franchise.getId().equals("fr-1")
                         && franchise.getName().equals("Franquicia Nueva"))
@@ -99,7 +99,7 @@ class FranchiseUseCaseTest {
 
     @Test
     void shouldAddBranchToFranchiseSuccessfully() {
-        // 1. ARRANGE (Preparar los datos de prueba)
+        // 1. ARRANGE (Prepare the test data)
         String franchiseId = "fr-2";
         Branch existingBranch = branch("br-1", "Sucursal 1");
         Branch newBranch = branch("br-2", "Sucursal 2");
@@ -108,10 +108,10 @@ class FranchiseUseCaseTest {
         when(repository.findById(franchiseId)).thenReturn(Mono.just(mockFranchise));
         when(repository.save(any(Franchise.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
-        // 2. ACT (Ejecutar el método)
+        // 2. ACT (Execute the method)
         Mono<Franchise> result = useCase.addBranchToFranchise(franchiseId, newBranch);
 
-        // 3. ASSERT (Verificar usando StepVerifier)
+        // 3. ASSERT (Verify using StepVerifier)
         StepVerifier.create(result)
                 .expectNextMatches(franchise -> franchise.getBranches().size() == 2
                         && franchise.getBranches().get(1).getId().equals("br-2")
@@ -124,15 +124,15 @@ class FranchiseUseCaseTest {
 
     @Test
     void shouldThrowBusinessExceptionWhenAddingBranchAndFranchiseNotFound() {
-        // 1. ARRANGE (Preparar)
+        // 1. ARRANGE (Prepare)
         String franchiseId = "fr-3";
         Branch newBranch = branch("br-3", "Sucursal Nueva");
         when(repository.findById(anyString())).thenReturn(Mono.empty());
 
-        // 2. ACT (Ejecutar)
+        // 2. ACT (Execute)
         Mono<Franchise> result = useCase.addBranchToFranchise(franchiseId, newBranch);
 
-        // 3. ASSERT (Verificar el error con StepVerifier)
+        // 3. ASSERT (Verify the error with StepVerifier)
         StepVerifier.create(result)
                 .expectErrorMatches(throwable -> throwable instanceof BusinessException &&
                         throwable.getMessage().contains("No se encontró la franquicia"))
@@ -141,7 +141,7 @@ class FranchiseUseCaseTest {
 
     @Test
     void shouldAddProductToSpecificBranchSuccessfully() {
-        // 1. ARRANGE (Preparar los datos de prueba)
+        // 1. ARRANGE (Prepare the test data)
         String franchiseId = "fr-4";
         String branchId = "br-4";
         Product existingProduct = product("pr-1", "Producto 1", 10);
@@ -155,10 +155,10 @@ class FranchiseUseCaseTest {
         when(repository.findById(franchiseId)).thenReturn(Mono.just(mockFranchise));
         when(repository.save(any(Franchise.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
-        // 2. ACT (Ejecutar el método)
+        // 2. ACT (Execute the method)
         Mono<Franchise> result = useCase.addProductToBranch(franchiseId, branchId, newProduct);
 
-        // 3. ASSERT (Verificar usando StepVerifier)
+        // 3. ASSERT (Verify using StepVerifier)
         StepVerifier.create(result)
                 .expectNextMatches(franchise -> franchise.getBranches().get(0).getProducts().size() == 2
                         && franchise.getBranches().get(0).getProducts().get(1).getId().equals("pr-2")
@@ -171,14 +171,14 @@ class FranchiseUseCaseTest {
 
     @Test
     void shouldThrowBusinessExceptionWhenAddingProductAndFranchiseNotFound() {
-        // 1. ARRANGE (Preparar)
+        // 1. ARRANGE (Prepare)
         String franchiseId = "fr-5";
         when(repository.findById(anyString())).thenReturn(Mono.empty());
 
-        // 2. ACT (Ejecutar)
+        // 2. ACT (Execute)
         Mono<Franchise> result = useCase.addProductToBranch(franchiseId, "br-9", product("pr-9", "Producto", 1));
 
-        // 3. ASSERT (Verificar el error con StepVerifier)
+        // 3. ASSERT (Verify the error with StepVerifier)
         StepVerifier.create(result)
                 .expectErrorMatches(throwable -> throwable instanceof BusinessException &&
                         throwable.getMessage().contains("No se encontró la franquicia"))
@@ -187,7 +187,7 @@ class FranchiseUseCaseTest {
 
     @Test
     void shouldDeleteProductFromSpecificBranchSuccessfully() {
-        // 1. ARRANGE (Preparar los datos de prueba)
+        // 1. ARRANGE (Prepare the test data)
         String franchiseId = "fr-6";
         String branchId = "br-6";
         Product productToDelete = product("pr-4", "Producto a borrar", 10);
@@ -201,10 +201,10 @@ class FranchiseUseCaseTest {
         when(repository.findById(franchiseId)).thenReturn(Mono.just(mockFranchise));
         when(repository.save(any(Franchise.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
-        // 2. ACT (Ejecutar el método)
+        // 2. ACT (Execute the method)
         Mono<Franchise> result = useCase.deleteProductFromBranch(franchiseId, branchId, "pr-4");
 
-        // 3. ASSERT (Verificar usando StepVerifier)
+        // 3. ASSERT (Verify using StepVerifier)
         StepVerifier.create(result)
                 .expectNextMatches(franchise -> franchise.getBranches().get(0).getProducts().size() == 1
                         && franchise.getBranches().get(0).getProducts().get(0).getId().equals("pr-5")
@@ -217,14 +217,14 @@ class FranchiseUseCaseTest {
 
     @Test
     void shouldThrowBusinessExceptionWhenDeletingProductAndFranchiseNotFound() {
-        // 1. ARRANGE (Preparar)
+        // 1. ARRANGE (Prepare)
         String franchiseId = "fr-7";
         when(repository.findById(anyString())).thenReturn(Mono.empty());
 
-        // 2. ACT (Ejecutar)
+        // 2. ACT (Execute)
         Mono<Franchise> result = useCase.deleteProductFromBranch(franchiseId, "br-1", "pr-1");
 
-        // 3. ASSERT (Verificar el error con StepVerifier)
+        // 3. ASSERT (Verify the error with StepVerifier)
         StepVerifier.create(result)
                 .expectErrorMatches(throwable -> throwable instanceof BusinessException &&
                         throwable.getMessage().contains("No se encontró la franquicia"))
@@ -233,7 +233,7 @@ class FranchiseUseCaseTest {
 
     @Test
     void shouldUpdateProductStockSuccessfully() {
-        // 1. ARRANGE (Preparar los datos de prueba)
+        // 1. ARRANGE (Prepare the test data)
         String franchiseId = "fr-8";
         String branchId = "br-8";
         String productId = "pr-8";
@@ -248,10 +248,10 @@ class FranchiseUseCaseTest {
         when(repository.findById(franchiseId)).thenReturn(Mono.just(mockFranchise));
         when(repository.save(any(Franchise.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
-        // 2. ACT (Ejecutar el método)
+        // 2. ACT (Execute the method)
         Mono<Franchise> result = useCase.updateProductStock(franchiseId, branchId, productId, 25);
 
-        // 3. ASSERT (Verificar usando StepVerifier)
+        // 3. ASSERT (Verify using StepVerifier)
         StepVerifier.create(result)
                 .expectNextMatches(franchise -> franchise.getBranches().get(0).getProducts().get(0).getStock() == 25
                         && franchise.getBranches().get(0).getProducts().get(1).getStock() == 3
@@ -264,13 +264,13 @@ class FranchiseUseCaseTest {
 
     @Test
     void shouldThrowInvalidDataExceptionWhenProductStockIsNegative() {
-        // 1. ARRANGE (Preparar)
+        // 1. ARRANGE (Prepare)
         String franchiseId = "fr-9";
 
-        // 2. ACT (Ejecutar)
+        // 2. ACT (Execute)
         Mono<Franchise> result = useCase.updateProductStock(franchiseId, "br-9", "pr-9", -1);
 
-        // 3. ASSERT (Verificar el error con StepVerifier)
+        // 3. ASSERT (Verify the error with StepVerifier)
         StepVerifier.create(result)
                 .expectErrorMatches(throwable -> throwable instanceof InvalidDataException &&
                         throwable.getMessage().contains("El stock es inválido"))
@@ -281,13 +281,13 @@ class FranchiseUseCaseTest {
 
     @Test
     void shouldThrowInvalidDataExceptionWhenProductStockIsNull() {
-        // 1. ARRANGE (Preparar)
+        // 1. ARRANGE (Prepare)
         String franchiseId = "fr-10";
 
-        // 2. ACT (Ejecutar)
+        // 2. ACT (Execute)
         Mono<Franchise> result = useCase.updateProductStock(franchiseId, "br-10", "pr-10", null);
 
-        // 3. ASSERT (Verificar el error con StepVerifier)
+        // 3. ASSERT (Verify the error with StepVerifier)
         StepVerifier.create(result)
                 .expectErrorMatches(throwable -> throwable instanceof InvalidDataException &&
                         throwable.getMessage().contains("El stock es inválido"))
@@ -298,14 +298,14 @@ class FranchiseUseCaseTest {
 
     @Test
     void shouldThrowBusinessExceptionWhenUpdatingStockAndFranchiseNotFound() {
-        // 1. ARRANGE (Preparar)
+        // 1. ARRANGE (Prepare)
         String franchiseId = "fr-11";
         when(repository.findById(anyString())).thenReturn(Mono.empty());
 
-        // 2. ACT (Ejecutar)
+        // 2. ACT (Execute)
         Mono<Franchise> result = useCase.updateProductStock(franchiseId, "br-11", "pr-11", 10);
 
-        // 3. ASSERT (Verificar el error con StepVerifier)
+        // 3. ASSERT (Verify the error with StepVerifier)
         StepVerifier.create(result)
                 .expectErrorMatches(throwable -> throwable instanceof BusinessException &&
                         throwable.getMessage().contains("No se encontró la franquicia"))
@@ -314,7 +314,7 @@ class FranchiseUseCaseTest {
 
     @Test
     void shouldReturnBranchWithMaxStockProduct() {
-        // 1. ARRANGE (Preparar los datos de prueba)
+        // 1. ARRANGE (Prepare the test data)
         String franchiseId = "fr-12";
         Branch branchWithProducts = branch("br-12", "Sucursal con productos",
                 product("pr-12", "Producto bajo", 2),
@@ -323,10 +323,10 @@ class FranchiseUseCaseTest {
         Franchise mockFranchise = franchise(franchiseId, "Franquicia Test", branchWithProducts, branchWithoutProducts);
         when(repository.findById(franchiseId)).thenReturn(Mono.just(mockFranchise));
 
-        // 2. ACT (Ejecutar el método)
+        // 2. ACT (Execute the method)
         Mono<Franchise> result = useCase.getProductMaxStock(franchiseId);
 
-        // 3. ASSERT (Verificar usando StepVerifier)
+        // 3. ASSERT (Verify using StepVerifier)
         StepVerifier.create(result)
                 .expectNextMatches(franchise -> franchise.getBranches().get(0).getProducts().size() == 1
                         && franchise.getBranches().get(0).getProducts().get(0).getId().equals("pr-13")
@@ -338,14 +338,14 @@ class FranchiseUseCaseTest {
 
     @Test
     void shouldThrowBusinessExceptionWhenGettingMaxStockAndFranchiseNotFound() {
-        // 1. ARRANGE (Preparar)
+        // 1. ARRANGE (Prepare)
         String franchiseId = "fr-13";
         when(repository.findById(anyString())).thenReturn(Mono.empty());
 
-        // 2. ACT (Ejecutar)
+        // 2. ACT (Execute)
         Mono<Franchise> result = useCase.getProductMaxStock(franchiseId);
 
-        // 3. ASSERT (Verificar el error con StepVerifier)
+        // 3. ASSERT (Verify the error with StepVerifier)
         StepVerifier.create(result)
                 .expectErrorMatches(throwable -> throwable instanceof BusinessException &&
                         throwable.getMessage().contains("No se encontró la franquicia"))
@@ -354,16 +354,16 @@ class FranchiseUseCaseTest {
 
     @Test
     void shouldUpdateFranchiseNameSuccessfully() {
-        // 1. ARRANGE (Preparar los datos de prueba)
+        // 1. ARRANGE (Prepare the test data)
         String franchiseId = "fr-14";
         Franchise mockFranchise = franchise(franchiseId, "Nombre Viejo");
         when(repository.findById(franchiseId)).thenReturn(Mono.just(mockFranchise));
         when(repository.save(any(Franchise.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
-        // 2. ACT (Ejecutar el método)
+        // 2. ACT (Execute the method)
         Mono<Franchise> result = useCase.updateFranchiseName(franchiseId, "Nombre Nuevo");
 
-        // 3. ASSERT (Verificar usando StepVerifier)
+        // 3. ASSERT (Verify using StepVerifier)
         StepVerifier.create(result)
                 .expectNextMatches(franchise -> franchise.getName().equals("Nombre Nuevo"))
                 .verifyComplete();
@@ -374,14 +374,14 @@ class FranchiseUseCaseTest {
 
     @Test
     void shouldThrowBusinessExceptionWhenUpdatingFranchiseNameAndNotFound() {
-        // 1. ARRANGE (Preparar)
+        // 1. ARRANGE (Prepare)
         String franchiseId = "fr-15";
         when(repository.findById(anyString())).thenReturn(Mono.empty());
 
-        // 2. ACT (Ejecutar)
+        // 2. ACT (Execute)
         Mono<Franchise> result = useCase.updateFranchiseName(franchiseId, "Nombre Nuevo");
 
-        // 3. ASSERT (Verificar el error con StepVerifier)
+        // 3. ASSERT (Verify the error with StepVerifier)
         StepVerifier.create(result)
                 .expectErrorMatches(throwable -> throwable instanceof BusinessException &&
                         throwable.getMessage().contains("No se encontró la franquicia"))
@@ -390,7 +390,7 @@ class FranchiseUseCaseTest {
 
     @Test
     void shouldUpdateBranchNameSuccessfully() {
-        // 1. ARRANGE (Preparar los datos de prueba)
+        // 1. ARRANGE (Prepare the test data)
         String franchiseId = "fr-16";
         String branchId = "br-16";
         Branch branchToUpdate = branch(branchId, "Sucursal Vieja", product("pr-16", "Producto 16", 1));
@@ -402,10 +402,10 @@ class FranchiseUseCaseTest {
         when(repository.findById(franchiseId)).thenReturn(Mono.just(mockFranchise));
         when(repository.save(any(Franchise.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
-        // 2. ACT (Ejecutar el método)
+        // 2. ACT (Execute the method)
         Mono<Franchise> result = useCase.updateBranchName(franchiseId, branchId, "Sucursal Nueva");
 
-        // 3. ASSERT (Verificar usando StepVerifier)
+        // 3. ASSERT (Verify using StepVerifier)
         StepVerifier.create(result)
                 .expectNextMatches(franchise -> franchise.getBranches().get(0).getName().equals("Sucursal Nueva")
                         && franchise.getBranches().get(1).getName().equals("Sucursal Intacta"))
@@ -417,14 +417,14 @@ class FranchiseUseCaseTest {
 
     @Test
     void shouldThrowBusinessExceptionWhenUpdatingBranchNameAndFranchiseNotFound() {
-        // 1. ARRANGE (Preparar)
+        // 1. ARRANGE (Prepare)
         String franchiseId = "fr-17";
         when(repository.findById(anyString())).thenReturn(Mono.empty());
 
-        // 2. ACT (Ejecutar)
+        // 2. ACT (Execute)
         Mono<Franchise> result = useCase.updateBranchName(franchiseId, "br-17", "Sucursal Nueva");
 
-        // 3. ASSERT (Verificar el error con StepVerifier)
+        // 3. ASSERT (Verify the error with StepVerifier)
         StepVerifier.create(result)
                 .expectErrorMatches(throwable -> throwable instanceof BusinessException &&
                         throwable.getMessage().contains("No se encontró la franquicia"))
@@ -433,7 +433,7 @@ class FranchiseUseCaseTest {
 
     @Test
     void shouldUpdateProductNameSuccessfully() {
-        // 1. ARRANGE (Preparar los datos de prueba)
+        // 1. ARRANGE (Prepare the test data)
         String franchiseId = "fr-18";
         String branchId = "br-18";
         String productId = "pr-18";
@@ -448,10 +448,10 @@ class FranchiseUseCaseTest {
         when(repository.findById(franchiseId)).thenReturn(Mono.just(mockFranchise));
         when(repository.save(any(Franchise.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
-        // 2. ACT (Ejecutar el método)
+        // 2. ACT (Execute the method)
         Mono<Franchise> result = useCase.updateProductName(franchiseId, branchId, productId, "Producto Nuevo");
 
-        // 3. ASSERT (Verificar usando StepVerifier)
+        // 3. ASSERT (Verify using StepVerifier)
         StepVerifier.create(result)
                 .expectNextMatches(franchise -> franchise.getBranches().get(0).getProducts().get(0).getName().equals("Producto Nuevo")
                         && franchise.getBranches().get(0).getProducts().get(1).getName().equals("Producto Intacto")
@@ -464,14 +464,14 @@ class FranchiseUseCaseTest {
 
     @Test
     void shouldThrowBusinessExceptionWhenUpdatingProductNameAndFranchiseNotFound() {
-        // 1. ARRANGE (Preparar)
+        // 1. ARRANGE (Prepare)
         String franchiseId = "fr-19";
         when(repository.findById(anyString())).thenReturn(Mono.empty());
 
-        // 2. ACT (Ejecutar)
+        // 2. ACT (Execute)
         Mono<Franchise> result = useCase.updateProductName(franchiseId, "br-19", "pr-19", "Producto Nuevo");
 
-        // 3. ASSERT (Verificar el error con StepVerifier)
+        // 3. ASSERT (Verify the error with StepVerifier)
         StepVerifier.create(result)
                 .expectErrorMatches(throwable -> throwable instanceof BusinessException &&
                         throwable.getMessage().contains("No se encontró la franquicia"))

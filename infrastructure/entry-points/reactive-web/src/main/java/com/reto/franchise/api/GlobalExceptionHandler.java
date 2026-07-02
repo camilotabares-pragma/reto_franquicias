@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import java.util.HashMap;
 import java.util.Map;
 
-@ControllerAdvice // Esta anotación convierte a la clase en un interceptor global de errores
+@ControllerAdvice // This annotation turns the class into a global error interceptor
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
@@ -26,7 +26,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidDataException.class)
     public ResponseEntity<Map<String, Object>> handleInvalidDataException(InvalidDataException ex) {
         Map<String, Object> errorResponse = new HashMap<>();
-        errorResponse.put("status", HttpStatus.BAD_REQUEST.value()); // Código 400
+        errorResponse.put("status", HttpStatus.BAD_REQUEST.value()); // 400 status code
         errorResponse.put("error", "Bad Request");
         errorResponse.put("message", ex.getMessage());
 
