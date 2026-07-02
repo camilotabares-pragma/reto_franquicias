@@ -1,0 +1,47 @@
+# ========================
+# Gradle
+# ========================
+.gradle/
+build/
+/applications/app-service/build/
+/domain/model/build/
+/domain/usecase/build/
+/infrastructure/entry-points/reactive-web/build/
+/infrastructure/driven-adapters/mongo-repository/build/
+
+# ========================
+# Archivos compilados
+# ========================
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+
+# ========================
+# IntelliJ IDEA
+# ========================
+.idea/
+out/
+*.iml
+*.iws
+*.ipr
+
+# ========================
+# Eclipse
+# ========================
+.project
+.classpath
+.settings/
+bin/
+
+# ========================
+# Sistema Operativo
+# ========================
+.DS_Store
+Thumbs.db
+
+# ========================
+# Logs
+# ========================
+*.log

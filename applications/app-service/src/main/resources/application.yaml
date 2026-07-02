@@ -1,0 +1,17 @@
+##Spring Configuration
+server:
+  port: 8080
+spring:
+  data:
+    mongodb:
+      uri: mongodb+srv://camilotabares_db_user:zR2MHeDZRUSrxaZQ@cluster0.9idr2vp.mongodb.net/franchise_db?appName=Cluster0
+  application:
+    name: FranchiseApi
+  devtools:
+    add-properties: false
+  h2:
+    console:
+      enabled: true
+      path: /h2
+  profiles:
+    include:

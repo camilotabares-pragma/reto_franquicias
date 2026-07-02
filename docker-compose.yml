@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  franchise-api:
+    build: .
+    container_name: franchise-reactive-api
+    ports:
+      - "8080:8080"
+    restart: always
