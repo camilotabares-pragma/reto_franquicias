@@ -16,22 +16,22 @@ import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 public class FranchiseMongoAdapter implements FranchiseRepository {
 
     private final FranchiseMongoDBRepository mongoRepository;
-    private final FranchiseMapper mapper; // Inject the mapper tool!
+    private final FranchiseMapper mapper;
 
     @Override
     @CircuitBreaker(name = "mongoCircuitBreaker", fallbackMethod = "saveFallback")
     public Mono<Franchise> save(Franchise franchise) {
         return Mono.just(franchise)
-                .map(mapper::toDocument) // MapStruct does the magic
-                .flatMap(mongoRepository::save) // Save to the database
-                .map(mapper::toDomain); // MapStruct translates back
+                .map(mapper::toDocument)
+                .flatMap(mongoRepository::save)
+                .map(mapper::toDomain);
     }
 
     @Override
     @CircuitBreaker(name = "mongoCircuitBreaker", fallbackMethod = "finByIdFallback")
     public Mono<Franchise> findById(String id) {
         return mongoRepository.findById(id)
-                .map(mapper::toDomain); // MapStruct translates back
+                .map(mapper::toDomain);
     }
 
     public Mono<Franchise> finByIdFallback(String id, Throwable error) {

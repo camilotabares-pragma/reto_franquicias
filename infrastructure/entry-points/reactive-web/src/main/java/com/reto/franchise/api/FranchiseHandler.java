@@ -32,14 +32,9 @@ public class FranchiseHandler {
      * Functional Criterion 2: Add a branch to a franchise
      */
     public Mono<ServerResponse> addBranchToFranchise(ServerRequest request) {
-        // 1. Extract the franchise ID from the URL
         String franchiseId = request.pathVariable("franchiseId");
-
-        // 2. Read the branch from the request body
         return request.bodyToMono(Branch.class)
-                // 3. Call the use case
                 .flatMap(newBranch -> franchiseUseCase.addBranchToFranchise(franchiseId, newBranch))
-                // 4. Respond with the updated franchise
                 .flatMap(updatedFranchise -> ServerResponse.ok()
                         .contentType(MediaType.APPLICATION_JSON)
                         .bodyValue(updatedFranchise));
@@ -50,27 +45,21 @@ public class FranchiseHandler {
      */
     public Mono<ServerResponse> getFranchiseById(ServerRequest request) {
         String franchiseId = request.pathVariable("franchiseId");
-
         return franchiseUseCase.getFranchiseById(franchiseId)
                 .flatMap(franchise -> ServerResponse.ok()
                         .contentType(MediaType.APPLICATION_JSON)
                         .bodyValue(franchise))
-                .switchIfEmpty(ServerResponse.notFound().build()); // 404 if it does not exist
+                .switchIfEmpty(ServerResponse.notFound().build());
     }
 
     /**
      * Functional Criterion 3: Add a product to a specific branch
      */
     public Mono<ServerResponse> addProductToBranch(ServerRequest request) {
-        // 1. Extract the two IDs from the URL
         String franchiseId = request.pathVariable("franchiseId");
         String branchId = request.pathVariable("branchId");
-
-        // 2. Read the product coming in the request body JSON
         return request.bodyToMono(Product.class)
-                // 3. Call the method implemented in the use case
                 .flatMap(newProduct -> franchiseUseCase.addProductToBranch(franchiseId, branchId, newProduct))
-                // 4. Return the franchise with the updated tree
                 .flatMap(updatedFranchise -> ServerResponse.ok()
                         .contentType(MediaType.APPLICATION_JSON)
                         .bodyValue(updatedFranchise));
@@ -97,8 +86,6 @@ public class FranchiseHandler {
         String franchiseId = request.pathVariable("franchiseId");
         String branchId = request.pathVariable("branchId");
         String productId = request.pathVariable("productId");
-
-        // Read a JSON payload with the "stock" field to update it
         return request.bodyToMono(Product.class)
                 .flatMap(productBody -> franchiseUseCase.updateProductStock(franchiseId, branchId, productId, productBody.getStock()))
                 .flatMap(updatedFranchise -> ServerResponse.ok()
@@ -140,8 +127,6 @@ public class FranchiseHandler {
     public Mono<ServerResponse> updateBranchName(ServerRequest request) {
         String franchiseId = request.pathVariable("franchiseId");
         String branchId = request.pathVariable("branchId");
-
-        // Use the Branch class to map the JSON that contains the new "name"
         return request.bodyToMono(Branch.class)
                 .flatMap(branchBody -> franchiseUseCase.updateBranchName(franchiseId, branchId, branchBody.getName()))
                 .flatMap(updatedFranchise -> ServerResponse.ok()
@@ -156,8 +141,6 @@ public class FranchiseHandler {
         String franchiseId = request.pathVariable("franchiseId");
         String branchId = request.pathVariable("branchId");
         String productId = request.pathVariable("productId");
-
-        // Use the Product class to map the JSON that contains the new "name"
         return request.bodyToMono(Product.class)
                 .flatMap(productBody -> franchiseUseCase.updateProductName(franchiseId, branchId, productId, productBody.getName()))
                 .flatMap(updatedFranchise -> ServerResponse.ok()

@@ -11,11 +11,9 @@ import org.mapstruct.Mapper;
 @Mapper(componentModel = "spring")
 public interface FranchiseMapper {
 
-    // Main mappings
     FranchiseDocument toDocument(Franchise franchise);
     Franchise toDomain(FranchiseDocument document);
 
-    // Nested mappings (MapStruct will use them automatically for lists)
     BranchDocument toBranchDocument(Branch branch);
     Branch toBranchDomain(BranchDocument document);
 

@@ -22,7 +22,6 @@ public class ProductMongoAdapter implements ProductRepository {
     @Override
     @CircuitBreaker(name = "mongoCircuitBreaker", fallbackMethod = "saveFallback")
     public Mono<Product> save(Product product) {
-        // As with the branch, persistence is handled from the root aggregate
         return Mono.just(product);
     }
 
@@ -30,16 +29,13 @@ public class ProductMongoAdapter implements ProductRepository {
     @CircuitBreaker(name = "mongoCircuitBreaker", fallbackMethod = "finByIdFallback")
     public Mono<Product> findById(Integer id) {
         return mongoRepository.findAll()
-                // Flatten the franchises to obtain all existing branches
                 .flatMap(franchiseDoc -> franchiseDoc.getBranches() != null ?
                         Flux.fromIterable(franchiseDoc.getBranches()) : Flux.empty())
-                // Flatten the branches to obtain all existing products
                 .flatMap(branchDoc -> branchDoc.getProducts() != null ?
                         Flux.fromIterable(branchDoc.getProducts()) : Flux.empty())
-                // Filter by the target ID
                 .filter(productDoc -> productDoc.getId().equals(id))
-                .next() // Convert the Flux into a Mono with the found element
-                .map(mapper::toProductDomain); // Translate to the domain
+                .next()
+                .map(mapper::toProductDomain);
     }
 
     public Mono<Franchise> finByIdFallback(String id, Throwable error) {
