@@ -10,6 +10,8 @@ dependencies {
 
     implementation project(':reactive-web')
     implementation project(':mongo-repository')
+
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
 }
 
 tasks.register('explodedJar', Copy) {
