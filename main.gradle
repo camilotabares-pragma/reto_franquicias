@@ -1,5 +1,13 @@
 apply plugin: 'info.solidsoft.pitest.aggregator'
 
+def jacocoExclusions = [
+        '**/api/**',
+        '**/config/**',
+        '**/mongo/**',
+        '**/mongo/mapper/**',
+        '**/*Application.*'
+]
+
 allprojects {
     repositories {
         mavenCentral()
@@ -70,6 +78,9 @@ subprojects {
 
     jacocoTestReport {
         dependsOn test
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: jacocoExclusions)
+        }))
         reports {
             xml.setRequired true
             xml.setOutputLocation layout.buildDirectory.file("reports/jacoco.xml")
@@ -89,7 +100,9 @@ tasks.register('jacocoMergedReport', JacocoReport) {
     dependsOn = [test, subprojects.jacocoTestReport]
     additionalSourceDirs.setFrom files(subprojects.sourceSets.main.allSource.srcDirs)
     sourceDirectories.setFrom files(subprojects.sourceSets.main.allSource.srcDirs)
-    classDirectories.setFrom files(subprojects.sourceSets.main.output)
+    classDirectories.setFrom(files(subprojects.collect {
+        it.sourceSets.main.output.asFileTree.matching { exclude jacocoExclusions }
+    }))
     executionData.setFrom project.fileTree(dir: '.', include: '**/build/jacoco/test.exec')
     reports {
         xml.setRequired true
