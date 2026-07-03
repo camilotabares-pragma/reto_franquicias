@@ -10,7 +10,7 @@ buildscript {
 }
 
 plugins {
-	id 'co.com.bancolombia.cleanArchitecture' version "${cleanArchitectureVersion}"
+	id 'co.com.bancolombia.cleanArchitecture' version "${cleanArchitectureVersion}" //Plugin Bancolombia
 	id 'org.springframework.boot' version "${springBootVersion}" apply false
 	id 'info.solidsoft.pitest' version "${pitestVersion}" apply false
 	id 'org.sonarqube' version "${sonarVersion}"

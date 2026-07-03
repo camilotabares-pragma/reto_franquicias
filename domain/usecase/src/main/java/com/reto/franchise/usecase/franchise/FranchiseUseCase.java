@@ -36,20 +36,23 @@ public class FranchiseUseCase {
      */
     public Mono<Franchise> addBranchToFranchise(String franchiseId, Branch newBranch) {
         return franchiseRepository.findById(franchiseId)
+                .switchIfEmpty(Mono.error(new BusinessException(
+                        "No se encontró la franquicia con ID: " + franchiseId
+                )))
                 .map(franchise -> {
-                    // 1. Get the current list or an immutable empty list
-                    var currentBranches = Optional.ofNullable(franchise.getBranches())
-                            .orElse(Collections.emptyList());
-                    // 2. Create a NEW list by merging the existing one with the new branch (using Streams)
-                    var updatedBranches = Stream.concat(currentBranches.stream(), Stream.of(newBranch))
+                    List<Branch> branches = Stream.concat(
+                                    Optional.ofNullable(franchise.getBranches())
+                                            .orElse(Collections.emptyList())
+                                            .stream(),
+                                    Stream.of(newBranch)
+                            )
                             .collect(Collectors.toList());
-                    // 3. Return a NEW Franchise instance using toBuilder (immutability)
+
                     return franchise.toBuilder()
-                            .branches(updatedBranches)
+                            .branches(branches)
                             .build();
                 })
-                .flatMap(franchiseRepository::save)
-                .switchIfEmpty(Mono.error(new BusinessException("No se encontró la franquicia con ID: " + franchiseId)));
+                .flatMap(franchiseRepository::save);
 
     }
 
