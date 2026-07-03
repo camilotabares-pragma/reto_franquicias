@@ -2,6 +2,10 @@ package com.reto.franchise.usecase.franchise;
 
 import com.reto.franchise.model.exception.BusinessException;
 import com.reto.franchise.model.exception.InvalidDataException;
+import com.reto.franchise.model.exception.BranchNotFoundException;
+import com.reto.franchise.model.exception.BranchAlreadyExistsException;
+import com.reto.franchise.model.exception.ProductNotFoundException;
+import com.reto.franchise.model.exception.ProductAlreadyExistsException;
 import com.reto.franchise.model.branch.Branch;
 import com.reto.franchise.model.franchise.Franchise;
 import com.reto.franchise.model.franchise.gateways.FranchiseRepository;
@@ -140,6 +144,22 @@ class FranchiseUseCaseTest {
     }
 
     @Test
+    void shouldThrowBranchAlreadyExistsExceptionWhenAddingDuplicateBranch() {
+        String franchiseId = "fr-20";
+        Branch existingBranch = branch("br-20", "Sucursal Existente");
+        Branch duplicateBranch = branch("br-20", "Sucursal Duplicada");
+        Franchise mockFranchise = franchise(franchiseId, "Franquicia Test", existingBranch);
+        when(repository.findById(franchiseId)).thenReturn(Mono.just(mockFranchise));
+
+        Mono<Franchise> result = useCase.addBranchToFranchise(franchiseId, duplicateBranch);
+
+        StepVerifier.create(result)
+                .expectErrorMatches(throwable -> throwable instanceof BranchAlreadyExistsException &&
+                        throwable.getMessage().contains("ya existe"))
+                .verify();
+    }
+
+    @Test
     void shouldAddProductToSpecificBranchSuccessfully() {
         // 1. ARRANGE (Prepare the test data)
         String franchiseId = "fr-4";
@@ -186,6 +206,39 @@ class FranchiseUseCaseTest {
     }
 
     @Test
+    void shouldThrowBranchNotFoundExceptionWhenAddingProductToBranchThatDoesNotExist() {
+        String franchiseId = "fr-21";
+        Product newProduct = product("pr-21", "Producto", 10);
+        Franchise mockFranchise = franchise(franchiseId, "Franquicia Test", branch("br-21", "Sucursal"));
+        when(repository.findById(franchiseId)).thenReturn(Mono.just(mockFranchise));
+
+        Mono<Franchise> result = useCase.addProductToBranch(franchiseId, "br-999", newProduct);
+
+        StepVerifier.create(result)
+                .expectErrorMatches(throwable -> throwable instanceof BranchNotFoundException &&
+                        throwable.getMessage().contains("No se encontró la rama"))
+                .verify();
+    }
+
+    @Test
+    void shouldThrowProductAlreadyExistsExceptionWhenAddingDuplicateProduct() {
+        String franchiseId = "fr-22";
+        String branchId = "br-22";
+        Product existingProduct = product("pr-22", "Producto Existente", 10);
+        Product duplicateProduct = product("pr-22", "Producto Duplicado", 5);
+        Franchise mockFranchise = franchise(franchiseId, "Franquicia Test",
+                branch(branchId, "Sucursal", existingProduct));
+        when(repository.findById(franchiseId)).thenReturn(Mono.just(mockFranchise));
+
+        Mono<Franchise> result = useCase.addProductToBranch(franchiseId, branchId, duplicateProduct);
+
+        StepVerifier.create(result)
+                .expectErrorMatches(throwable -> throwable instanceof ProductAlreadyExistsException &&
+                        throwable.getMessage().contains("ya existe"))
+                .verify();
+    }
+
+    @Test
     void shouldDeleteProductFromSpecificBranchSuccessfully() {
         // 1. ARRANGE (Prepare the test data)
         String franchiseId = "fr-6";
@@ -228,6 +281,37 @@ class FranchiseUseCaseTest {
         StepVerifier.create(result)
                 .expectErrorMatches(throwable -> throwable instanceof BusinessException &&
                         throwable.getMessage().contains("No se encontró la franquicia"))
+                .verify();
+    }
+
+    @Test
+    void shouldThrowBranchNotFoundExceptionWhenDeletingProductFromBranchThatDoesNotExist() {
+        String franchiseId = "fr-23";
+        Franchise mockFranchise = franchise(franchiseId, "Franquicia Test",
+                branch("br-23", "Sucursal", product("pr-23", "Producto", 10)));
+        when(repository.findById(franchiseId)).thenReturn(Mono.just(mockFranchise));
+
+        Mono<Franchise> result = useCase.deleteProductFromBranch(franchiseId, "br-999", "pr-23");
+
+        StepVerifier.create(result)
+                .expectErrorMatches(throwable -> throwable instanceof BranchNotFoundException &&
+                        throwable.getMessage().contains("No se encontró la rama"))
+                .verify();
+    }
+
+    @Test
+    void shouldThrowProductNotFoundExceptionWhenDeletingProductThatDoesNotExist() {
+        String franchiseId = "fr-24";
+        String branchId = "br-24";
+        Franchise mockFranchise = franchise(franchiseId, "Franquicia Test",
+                branch(branchId, "Sucursal", product("pr-24", "Producto", 10)));
+        when(repository.findById(franchiseId)).thenReturn(Mono.just(mockFranchise));
+
+        Mono<Franchise> result = useCase.deleteProductFromBranch(franchiseId, branchId, "pr-999");
+
+        StepVerifier.create(result)
+                .expectErrorMatches(throwable -> throwable instanceof ProductNotFoundException &&
+                        throwable.getMessage().contains("No se encontró el producto"))
                 .verify();
     }
 
@@ -313,15 +397,45 @@ class FranchiseUseCaseTest {
     }
 
     @Test
+    void shouldThrowBranchNotFoundExceptionWhenUpdatingProductStockInBranchThatDoesNotExist() {
+        String franchiseId = "fr-25";
+        Franchise mockFranchise = franchise(franchiseId, "Franquicia Test",
+                branch("br-25", "Sucursal", product("pr-25", "Producto", 10)));
+        when(repository.findById(franchiseId)).thenReturn(Mono.just(mockFranchise));
+
+        Mono<Franchise> result = useCase.updateProductStock(franchiseId, "br-999", "pr-25", 20);
+
+        StepVerifier.create(result)
+                .expectErrorMatches(throwable -> throwable instanceof BranchNotFoundException &&
+                        throwable.getMessage().contains("No se encontró la rama"))
+                .verify();
+    }
+
+    @Test
+    void shouldThrowProductNotFoundExceptionWhenUpdatingProductStockOfNonExistentProduct() {
+        String franchiseId = "fr-26";
+        String branchId = "br-26";
+        Franchise mockFranchise = franchise(franchiseId, "Franquicia Test",
+                branch(branchId, "Sucursal", product("pr-26", "Producto", 10)));
+        when(repository.findById(franchiseId)).thenReturn(Mono.just(mockFranchise));
+
+        Mono<Franchise> result = useCase.updateProductStock(franchiseId, branchId, "pr-999", 20);
+
+        StepVerifier.create(result)
+                .expectErrorMatches(throwable -> throwable instanceof ProductNotFoundException &&
+                        throwable.getMessage().contains("No se encontró el producto"))
+                .verify();
+    }
+
+    @Test
     void shouldReturnBranchWithMaxStockProduct() {
         // 1. ARRANGE (Prepare the test data)
         String franchiseId = "fr-12";
         Branch branchWithProducts = branch("br-12", "Sucursal con productos",
-                product("pr-12", "Producto bajo", 2),
                 product("pr-13", "Producto alto", 9));
         Branch branchWithoutProducts = branch("br-13", "Sucursal vacía");
         Franchise mockFranchise = franchise(franchiseId, "Franquicia Test", branchWithProducts, branchWithoutProducts);
-        when(repository.findById(franchiseId)).thenReturn(Mono.just(mockFranchise));
+        when(repository.findByIdWithMaxStockProducts(franchiseId)).thenReturn(Mono.just(mockFranchise));
 
         // 2. ACT (Execute the method)
         Mono<Franchise> result = useCase.getProductMaxStock(franchiseId);
@@ -333,14 +447,14 @@ class FranchiseUseCaseTest {
                         && franchise.getBranches().get(1).getProducts().isEmpty())
                 .verifyComplete();
 
-        verify(repository).findById(franchiseId);
+        verify(repository).findByIdWithMaxStockProducts(franchiseId);
     }
 
     @Test
     void shouldThrowBusinessExceptionWhenGettingMaxStockAndFranchiseNotFound() {
         // 1. ARRANGE (Prepare)
         String franchiseId = "fr-13";
-        when(repository.findById(anyString())).thenReturn(Mono.empty());
+        when(repository.findByIdWithMaxStockProducts(anyString())).thenReturn(Mono.empty());
 
         // 2. ACT (Execute)
         Mono<Franchise> result = useCase.getProductMaxStock(franchiseId);
@@ -432,6 +546,21 @@ class FranchiseUseCaseTest {
     }
 
     @Test
+    void shouldThrowBranchNotFoundExceptionWhenUpdatingBranchNameForNonExistentBranch() {
+        String franchiseId = "fr-27";
+        Franchise mockFranchise = franchise(franchiseId, "Franquicia Test",
+                branch("br-27", "Sucursal"));
+        when(repository.findById(franchiseId)).thenReturn(Mono.just(mockFranchise));
+
+        Mono<Franchise> result = useCase.updateBranchName(franchiseId, "br-999", "Sucursal Nueva");
+
+        StepVerifier.create(result)
+                .expectErrorMatches(throwable -> throwable instanceof BranchNotFoundException &&
+                        throwable.getMessage().contains("No se encontró la rama"))
+                .verify();
+    }
+
+    @Test
     void shouldUpdateProductNameSuccessfully() {
         // 1. ARRANGE (Prepare the test data)
         String franchiseId = "fr-18";
@@ -475,6 +604,37 @@ class FranchiseUseCaseTest {
         StepVerifier.create(result)
                 .expectErrorMatches(throwable -> throwable instanceof BusinessException &&
                         throwable.getMessage().contains("No se encontró la franquicia"))
+                .verify();
+    }
+
+    @Test
+    void shouldThrowBranchNotFoundExceptionWhenUpdatingProductNameInBranchThatDoesNotExist() {
+        String franchiseId = "fr-28";
+        Franchise mockFranchise = franchise(franchiseId, "Franquicia Test",
+                branch("br-28", "Sucursal", product("pr-28", "Producto", 10)));
+        when(repository.findById(franchiseId)).thenReturn(Mono.just(mockFranchise));
+
+        Mono<Franchise> result = useCase.updateProductName(franchiseId, "br-999", "pr-28", "Producto Nuevo");
+
+        StepVerifier.create(result)
+                .expectErrorMatches(throwable -> throwable instanceof BranchNotFoundException &&
+                        throwable.getMessage().contains("No se encontró la rama"))
+                .verify();
+    }
+
+    @Test
+    void shouldThrowProductNotFoundExceptionWhenUpdatingProductNameOfNonExistentProduct() {
+        String franchiseId = "fr-29";
+        String branchId = "br-29";
+        Franchise mockFranchise = franchise(franchiseId, "Franquicia Test",
+                branch(branchId, "Sucursal", product("pr-29", "Producto", 10)));
+        when(repository.findById(franchiseId)).thenReturn(Mono.just(mockFranchise));
+
+        Mono<Franchise> result = useCase.updateProductName(franchiseId, branchId, "pr-999", "Producto Nuevo");
+
+        StepVerifier.create(result)
+                .expectErrorMatches(throwable -> throwable instanceof ProductNotFoundException &&
+                        throwable.getMessage().contains("No se encontró el producto"))
                 .verify();
     }
 

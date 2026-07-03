@@ -34,6 +34,31 @@ public class FranchiseMongoAdapter implements FranchiseRepository {
                 .map(mapper::toDomain);
     }
 
+    @Override
+    @CircuitBreaker(name = "mongoCircuitBreaker", fallbackMethod = "finByIdFallback")
+    public Mono<Franchise> findByIdWithMaxStockProducts(String id) {
+        return mongoRepository.findById(id)
+                .map(doc -> {
+                    doc.setBranches(doc.getBranches() != null ? doc.getBranches().stream()
+                            .map(branchDoc -> {
+                                if (branchDoc.getProducts() != null && !branchDoc.getProducts().isEmpty()) {
+                                    var maxProduct = branchDoc.getProducts().stream()
+                                            .max((p1, p2) -> Integer.compare(
+                                                    p1.getStock() != null ? p1.getStock() : 0,
+                                                    p2.getStock() != null ? p2.getStock() : 0))
+                                            .orElse(null);
+                                    if (maxProduct != null) {
+                                        branchDoc.setProducts(java.util.List.of(maxProduct));
+                                    }
+                                }
+                                return branchDoc;
+                            })
+                            .collect(java.util.stream.Collectors.toList()) : null);
+                    return doc;
+                })
+                .map(mapper::toDomain);
+    }
+
     public Mono<Franchise> finByIdFallback(String id, Throwable error) {
         return Mono.error(new BusinessException("Base de datos no disponible temporalmente. Intente más tarde."));
     }
