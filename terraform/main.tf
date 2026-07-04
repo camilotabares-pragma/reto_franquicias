@@ -1,4 +1,4 @@
-# 1. EL BLOQUE TERRAFORM: Le decimos qué herramientas necesitamos descargar
+# Bloque de configuración de Terraform
 terraform {
   required_providers {
     aws = {
@@ -8,27 +8,27 @@ terraform {
   }
 }
 
-# 2. EL PROVIDER: Le decimos en qué región de AWS vamos a trabajar
+# Configuración del proveedor AWS
 provider "aws" {
   region = "us-east-1"
 }
 
-# 3. EL RECURSO: ¡Aquí está la magia! Le pedimos que cree un repositorio ECR
+# Recurso para el repositorio ECR
 resource "aws_ecr_repository" "mi_repositorio" {
-  name                 = "franquicias-api-repo" # El nombre que tendrá en AWS
-  image_tag_mutability = "MUTABLE"              # Permite sobreescribir imágenes con la etiqueta "latest"
+  name                 = "franquicias-api-repo" # Nombre del repositorio en AWS
+  image_tag_mutability = "MUTABLE"              # Permite actualizar etiquetas de imagen
 
-  force_delete = true                           # Si algún día destruimos la infra, que borre el repo aunque tenga imágenes dentro
+  force_delete = true                           # Elimina el repositorio junto con su contenido
 }
 
-# Crear la red principal
+# Red principal
 resource "aws_vpc" "main" {
   cidr_block           = "10.0.0.0/16"
   enable_dns_hostnames = true
   tags = { Name = "franquicias-vpc" }
 }
 
-# Subred Pública 1 (Zona A)
+# Subred pública 1
 resource "aws_subnet" "public_a" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = "10.0.1.0/24"
@@ -37,7 +37,7 @@ resource "aws_subnet" "public_a" {
   tags = { Name = "franquicias-pub-a" }
 }
 
-# Subred Pública 2 (Zona B)
+# Subred pública 2
 resource "aws_subnet" "public_b" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = "10.0.2.0/24"
@@ -46,13 +46,13 @@ resource "aws_subnet" "public_b" {
   tags = { Name = "franquicias-pub-b" }
 }
 
-# El "Internet Gateway" para que la red tenga salida a internet
+# Gateway de internet
 resource "aws_internet_gateway" "gw" {
   vpc_id = aws_vpc.main.id
   tags   = { Name = "franquicias-igw" }
 }
 
-# Tabla de enrutamiento para decirle a las subredes cómo salir a internet
+# Tabla de enrutamiento
 resource "aws_route_table" "rt" {
   vpc_id = aws_vpc.main.id
   route {
@@ -76,7 +76,7 @@ resource "aws_security_group" "ecs_sg" {
   description = "Permitir trafico a la API"
   vpc_id      = aws_vpc.main.id
 
-  # Permitir entrada en el puerto 8080 (API)
+  # Regla de entrada para el puerto 8080
   ingress {
     from_port   = 8080
     to_port     = 8080
@@ -84,7 +84,7 @@ resource "aws_security_group" "ecs_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Permitir entrada en el puerto 80 (Para el Balanceador de carga)
+  # Regla de entrada para el puerto 80
   ingress {
     from_port   = 80
     to_port     = 80
@@ -92,7 +92,7 @@ resource "aws_security_group" "ecs_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Permitir CUALQUIER salida (para que la API pueda hablar con Mongo Atlas en internet)
+  # Regla de salida hacia internet
   egress {
     from_port   = 0
     to_port     = 0
@@ -101,21 +101,21 @@ resource "aws_security_group" "ecs_sg" {
   }
 }
 
-# El clúster lógico de ECS
+# Clúster de ECS
 resource "aws_ecs_cluster" "main" {
   name = "franquicias-cluster"
 }
 
-# La definición de la tarea (El plano de cuánta RAM y CPU queremos)
+# Definición de la tarea ECS
 resource "aws_ecs_task_definition" "app" {
   family                   = "franquicias-api-task"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = "512"  # 0.25 vCPU (Lo mínimo y más barato)
-  memory                   = "1024"  # 512 MB RAM
+  cpu                      = "512"  # 0.25 vCPU
+  memory                   = "1024"  # 512 MB de RAM
   execution_role_arn       = aws_iam_role.ecs_execution_role.arn
 
-  # Definición del contenedor de Docker
+  # Definición del contenedor
   container_definitions = jsonencode([{
     name      = "franchise-api"
     image     = "367553824468.dkr.ecr.us-east-1.amazonaws.com/franquicias-api-repo:latest"
@@ -124,7 +124,7 @@ resource "aws_ecs_task_definition" "app" {
       containerPort = 8080
       hostPort      = 8080
     }]
-    # VARIABLES DE ENTORNO: Aquí le inyectas la conexión a Mongo Atlas
+    # Variables de entorno
     environment = [
       { name = "SPRING_DATA_MONGODB_URI", value = "mongodb+srv://camilotabares_db_user:zR2MHeDZRUSrxaZQ@cluster0.9idr2vp.mongodb.net/franchise_db?appName=Cluster0" }
     ]
@@ -139,7 +139,7 @@ resource "aws_ecs_task_definition" "app" {
   }])
 }
 
-# El Balanceador de Carga que recibirá las peticiones de internet
+# Balanceador de carga
 resource "aws_lb" "main" {
   name               = "franquicias-alb"
   internal           = false
@@ -148,7 +148,7 @@ resource "aws_lb" "main" {
   subnets            = [aws_subnet.public_a.id, aws_subnet.public_b.id]
 }
 
-# El Target Group: Le dice al balanceador a qué puerto redirigir el tráfico interno
+# Target group
 resource "aws_lb_target_group" "app" {
   name        = "franquicias-tg"
   port        = 8080
@@ -157,7 +157,7 @@ resource "aws_lb_target_group" "app" {
   target_type = "ip"
 
   health_check {
-    path                = "/actuator/health" # O la ruta de tu Swagger si no tienes Actuator
+    path                = "/webjars/swagger-ui/index.html"
     healthy_threshold   = 3
     unhealthy_threshold = 3
     timeout             = 5
@@ -166,7 +166,7 @@ resource "aws_lb_target_group" "app" {
   }
 }
 
-# El oyente (Listener): Escucha en el puerto 80 público y lo manda al Target Group
+# Listener del balanceador
 resource "aws_lb_listener" "front_end" {
   load_balancer_arn = aws_lb.main.arn
   port              = "80"
@@ -178,13 +178,15 @@ resource "aws_lb_listener" "front_end" {
   }
 }
 
-# El Servicio ECS: El encargado de mantener el contenedor vivo y conectado al balanceador
+# Servicio ECS
 resource "aws_ecs_service" "main" {
   name            = "franquicias-service"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.app.arn
-  desired_count   = 1 # Queremos solo 1 copia corriendo para no gastar dinero
+  desired_count   = 1 # Cantidad de tareas deseadas
   launch_type     = "FARGATE"
+
+  health_check_grace_period_seconds = 120
 
   network_configuration {
     subnets          = [aws_subnet.public_a.id, aws_subnet.public_b.id]
@@ -201,13 +203,13 @@ resource "aws_ecs_service" "main" {
   depends_on = [aws_lb_listener.front_end]
 }
 
-# OUTPUT: Terraform nos imprimirá en pantalla la URL del balanceador cuando termine
+# Salida con la URL pública del balanceador
 output "url_publica_alb" {
   value       = aws_lb.main.dns_name
-  description = "Usa esta URL para probar tus endpoints en Postman"
+  description = "URL pública del balanceador"
 }
 
-# Crear el rol de ejecución para ECS Task
+# Rol de ejecución para ECS
 resource "aws_iam_role" "ecs_execution_role" {
   name = "franquicias-ecs-execution-role"
 
@@ -221,14 +223,14 @@ resource "aws_iam_role" "ecs_execution_role" {
   })
 }
 
-# Adjuntar la política oficial de AWS para que pueda leer de ECR y escribir Logs
+# Política administrada para ECS
 resource "aws_iam_role_policy_attachment" "ecs_execution" {
   role       = aws_iam_role.ecs_execution_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-# Crear un grupo de logs en CloudWatch
+# Grupo de logs en CloudWatch
 resource "aws_cloudwatch_log_group" "api_logs" {
   name              = "/ecs/franquicias-api"
-  retention_in_days = 7 # Borra los logs antiguos después de una semana para no cobrarte de más
+  retention_in_days = 7 # Retención de logs en días
 }
