@@ -26,7 +26,7 @@ Para este desarrollo, apliqué principios de **Domain-Driven Design (DDD)** adap
 * **Base de Datos:** MongoDB Atlas (Cloud) y Spring Data Reactive MongoDB
 * **Documentación:** Swagger UI (springdoc-openapi-starter-webflux-ui)
 * **Testing:** JUnit 5, Mockito, Project Reactor `StepVerifier`
-* **Despliegue:** Docker & Docker Compose (Multi-stage build optimizado)
+* **Despliegue:** Docker & Docker Compose (Multi-stage build optimizado), Terraform y AWS
 
 ---
 
@@ -51,6 +51,23 @@ La aplicación está dockerizada utilizando un **Multi-stage build**. Esto signi
    ```
    *Nota: El Dockerfile incluye la exclusión de la tarea de validación estructural (`-x validateStructure`) para garantizar una compilación fluida y agnóstica dentro de entornos Linux.*
 3. Espera a que los logs indiquen que Spring Boot ha arrancado con éxito en el puerto `8080`.
+
+---
+
+## ☁️ Despliegue en AWS con Terraform
+
+La infraestructura del proyecto también está definida con **Terraform** para automatizar el aprovisionamiento en **AWS**. La configuración incluye:
+
+* **ECR** para almacenar la imagen de la API.
+* **VPC**, **subredes públicas**, **Internet Gateway** y **tabla de ruteo**.
+* **Security Group** para el acceso a la aplicación.
+* **ECS Fargate** para ejecutar el servicio.
+* **Application Load Balancer** para exponer la aplicación públicamente.
+* **CloudWatch Logs** para centralizar los registros.
+
+### URL pública actual
+
+**👉 AWS ALB:** http://franquicias-alb-1278485183.us-east-1.elb.amazonaws.com
 
 ---
 
