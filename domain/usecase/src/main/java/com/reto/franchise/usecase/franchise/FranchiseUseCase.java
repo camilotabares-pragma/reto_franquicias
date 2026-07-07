@@ -228,10 +228,11 @@ public class FranchiseUseCase {
      */
     public Mono<Franchise> updateFranchiseName(String franchiseId, String newName) {
         return franchiseRepository.findById(franchiseId)
-                .flatMap(franchise -> {
-                    franchise.setName(newName);
-                    return franchiseRepository.save(franchise);
-                })
+                .flatMap(franchise -> franchiseRepository.save(
+                        franchise.toBuilder()
+                                .name(newName)
+                                .build()
+                ))
                 .switchIfEmpty(Mono.error(new BusinessException(FRANCHISE_NOT_FOUND + franchiseId)));
     }
 

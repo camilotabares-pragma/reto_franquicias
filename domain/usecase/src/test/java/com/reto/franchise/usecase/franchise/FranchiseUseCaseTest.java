@@ -483,7 +483,7 @@ class FranchiseUseCaseTest {
                 .verifyComplete();
 
         verify(repository).findById(franchiseId);
-        verify(repository).save(mockFranchise);
+        verify(repository).save(any(Franchise.class));
     }
 
     @Test
