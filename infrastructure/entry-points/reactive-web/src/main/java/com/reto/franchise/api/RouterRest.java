@@ -22,82 +22,63 @@ import static org.springframework.web.reactive.function.server.RouterFunctions.r
 public class RouterRest {
 
     @RouterOperations({
-            // 1. Create franchise
-            @RouterOperation(path = "/api/franchises", produces = { MediaType.APPLICATION_JSON_VALUE },
+            @RouterOperation(path = "/api/franchises", produces = {MediaType.APPLICATION_JSON_VALUE},
                     method = RequestMethod.POST, beanClass = FranchiseHandler.class, beanMethod = "createFranchise",
-                    operation = @Operation(operationId = "createFranchise", summary = "Crear una nueva franquicia")),
-
-            // 2. Get all franchises
-            @RouterOperation(path = "/api/franchises", produces = { MediaType.APPLICATION_JSON_VALUE },
+                    operation = @Operation(operationId = "createFranchise", summary = "Create a new franchise")),
+            @RouterOperation(path = "/api/franchises", produces = {MediaType.APPLICATION_JSON_VALUE},
                     method = RequestMethod.GET, beanClass = FranchiseHandler.class, beanMethod = "getAllFranchises",
-                    operation = @Operation(operationId = "getAllFranchises", summary = "Obtener todas las franquicias")),
-
-            // 3. Add branch
-            @RouterOperation(path = "/api/franchises/{franchiseId}/branches", produces = { MediaType.APPLICATION_JSON_VALUE },
-                    method = RequestMethod.POST, beanClass = FranchiseHandler.class, beanMethod = "addBranchToFranchise",
-                    operation = @Operation(operationId = "addBranchToFranchise", summary = "Agregar una sucursal a la franquicia",
-                            parameters = { @Parameter(in = ParameterIn.PATH, name = "franchiseId", description = "ID de la franquicia") })),
-
-            // 4. Get franchise
-            @RouterOperation(path = "/api/franchises/{franchiseId}", produces = { MediaType.APPLICATION_JSON_VALUE },
+                    operation = @Operation(operationId = "getAllFranchises", summary = "Get all franchises")),
+            @RouterOperation(path = "/api/franchises/{franchiseId}", produces = {MediaType.APPLICATION_JSON_VALUE},
                     method = RequestMethod.GET, beanClass = FranchiseHandler.class, beanMethod = "getFranchiseById",
-                    operation = @Operation(operationId = "getFranchiseById", summary = "Obtener la franquicia completa",
-                            parameters = { @Parameter(in = ParameterIn.PATH, name = "franchiseId") })),
-
-            // 5. Create products
-            @RouterOperation(path = "/api/franchises/{franchiseId}/branches/{branchId}/products", produces = { MediaType.APPLICATION_JSON_VALUE },
-                    method = RequestMethod.POST, beanClass = FranchiseHandler.class, beanMethod = "addProductToBranch",
-                    operation = @Operation(operationId = "addProductToBranch", summary = "Agregar producto a una sucursal",
-                            parameters = {
-                                    @Parameter(in = ParameterIn.PATH, name = "franchiseId"),
-                                    @Parameter(in = ParameterIn.PATH, name = "branchId")
-                            })),
-
-            // 6. Delete product
-            @RouterOperation(path = "/api/franchises/{franchiseId}/branches/{branchId}/products/{productId}", produces = { MediaType.APPLICATION_JSON_VALUE },
-                    method = RequestMethod.DELETE, beanClass = FranchiseHandler.class, beanMethod = "deleteProduct",
-                    operation = @Operation(operationId = "deleteProduct", summary = "Eliminar producto de una sucursal",
-                            parameters = {
-                                    @Parameter(in = ParameterIn.PATH, name = "franchiseId"),
-                                    @Parameter(in = ParameterIn.PATH, name = "branchId"),
-                                    @Parameter(in = ParameterIn.PATH, name = "productId")
-                            })),
-
-            // 7. Update stock
-            @RouterOperation(path = "/api/franchises/{franchiseId}/branches/{branchId}/products/{productId}/stock", produces = { MediaType.APPLICATION_JSON_VALUE },
-                    method = RequestMethod.PUT, beanClass = FranchiseHandler.class, beanMethod = "updateProductStock",
-                    operation = @Operation(operationId = "updateProductStock", summary = "Editar stock de un producto",
-                            parameters = {
-                                    @Parameter(in = ParameterIn.PATH, name = "franchiseId"),
-                                    @Parameter(in = ParameterIn.PATH, name = "branchId"),
-                                    @Parameter(in = ParameterIn.PATH, name = "productId")
-                            })),
-
-            // 8. Get max-stock products
-            @RouterOperation(path = "/api/franchises/{franchiseId}/max-stock", produces = { MediaType.APPLICATION_JSON_VALUE },
+                    operation = @Operation(operationId = "getFranchiseById", summary = "Get franchise by id",
+                            parameters = {@Parameter(in = ParameterIn.PATH, name = "franchiseId")})),
+            @RouterOperation(path = "/api/franchises/{franchiseId}/max-stock", produces = {MediaType.APPLICATION_JSON_VALUE},
                     method = RequestMethod.GET, beanClass = FranchiseHandler.class, beanMethod = "getMaxStockProducts",
-                    operation = @Operation(operationId = "getMaxStockProducts", summary = "Obtener el producto con más stock por sucursal",
-                            parameters = { @Parameter(in = ParameterIn.PATH, name = "franchiseId") })),
-
-            // 9. Update franchise name
-            @RouterOperation(path = "/api/franchises/{franchiseId}/name", produces = { MediaType.APPLICATION_JSON_VALUE },
+                    operation = @Operation(operationId = "getMaxStockProducts", summary = "Get max stock product per branch",
+                            parameters = {@Parameter(in = ParameterIn.PATH, name = "franchiseId")})),
+            @RouterOperation(path = "/api/franchises/{franchiseId}/name", produces = {MediaType.APPLICATION_JSON_VALUE},
                     method = RequestMethod.PUT, beanClass = FranchiseHandler.class, beanMethod = "updateFranchiseName",
-                    operation = @Operation(operationId = "updateFranchiseName", summary = "Editar nombre de la franquicia",
-                            parameters = { @Parameter(in = ParameterIn.PATH, name = "franchiseId") })),
+                    operation = @Operation(operationId = "updateFranchiseName", summary = "Update franchise name",
+                            parameters = {@Parameter(in = ParameterIn.PATH, name = "franchiseId")})),
 
-            // 10. Update branch name
-            @RouterOperation(path = "/api/franchises/{franchiseId}/branches/{branchId}/name", produces = { MediaType.APPLICATION_JSON_VALUE },
-                    method = RequestMethod.PUT, beanClass = FranchiseHandler.class, beanMethod = "updateBranchName",
-                    operation = @Operation(operationId = "updateBranchName", summary = "Editar nombre de la sucursal",
+            @RouterOperation(path = "/api/franchises/{franchiseId}/branches", produces = {MediaType.APPLICATION_JSON_VALUE},
+                    method = RequestMethod.POST, beanClass = BranchHandler.class, beanMethod = "addBranchToFranchise",
+                    operation = @Operation(operationId = "addBranchToFranchise", summary = "Add branch to franchise",
+                            parameters = {@Parameter(in = ParameterIn.PATH, name = "franchiseId")})),
+            @RouterOperation(path = "/api/franchises/{franchiseId}/branches/{branchId}/name", produces = {MediaType.APPLICATION_JSON_VALUE},
+                    method = RequestMethod.PUT, beanClass = BranchHandler.class, beanMethod = "updateBranchName",
+                    operation = @Operation(operationId = "updateBranchName", summary = "Update branch name",
                             parameters = {
                                     @Parameter(in = ParameterIn.PATH, name = "franchiseId"),
                                     @Parameter(in = ParameterIn.PATH, name = "branchId")
                             })),
 
-            // 11. Update product name
-            @RouterOperation(path = "/api/franchises/{franchiseId}/branches/{branchId}/products/{productId}/name", produces = { MediaType.APPLICATION_JSON_VALUE },
-                    method = RequestMethod.PUT, beanClass = FranchiseHandler.class, beanMethod = "updateProductName",
-                    operation = @Operation(operationId = "updateProductName", summary = "Editar nombre del producto",
+            @RouterOperation(path = "/api/franchises/{franchiseId}/branches/{branchId}/products", produces = {MediaType.APPLICATION_JSON_VALUE},
+                    method = RequestMethod.POST, beanClass = ProductHandler.class, beanMethod = "addProductToBranch",
+                    operation = @Operation(operationId = "addProductToBranch", summary = "Add product to branch",
+                            parameters = {
+                                    @Parameter(in = ParameterIn.PATH, name = "franchiseId"),
+                                    @Parameter(in = ParameterIn.PATH, name = "branchId")
+                            })),
+            @RouterOperation(path = "/api/franchises/{franchiseId}/branches/{branchId}/products/{productId}", produces = {MediaType.APPLICATION_JSON_VALUE},
+                    method = RequestMethod.DELETE, beanClass = ProductHandler.class, beanMethod = "deleteProduct",
+                    operation = @Operation(operationId = "deleteProduct", summary = "Delete product from branch",
+                            parameters = {
+                                    @Parameter(in = ParameterIn.PATH, name = "franchiseId"),
+                                    @Parameter(in = ParameterIn.PATH, name = "branchId"),
+                                    @Parameter(in = ParameterIn.PATH, name = "productId")
+                            })),
+            @RouterOperation(path = "/api/franchises/{franchiseId}/branches/{branchId}/products/{productId}/stock", produces = {MediaType.APPLICATION_JSON_VALUE},
+                    method = RequestMethod.PUT, beanClass = ProductHandler.class, beanMethod = "updateProductStock",
+                    operation = @Operation(operationId = "updateProductStock", summary = "Update product stock",
+                            parameters = {
+                                    @Parameter(in = ParameterIn.PATH, name = "franchiseId"),
+                                    @Parameter(in = ParameterIn.PATH, name = "branchId"),
+                                    @Parameter(in = ParameterIn.PATH, name = "productId")
+                            })),
+            @RouterOperation(path = "/api/franchises/{franchiseId}/branches/{branchId}/products/{productId}/name", produces = {MediaType.APPLICATION_JSON_VALUE},
+                    method = RequestMethod.PUT, beanClass = ProductHandler.class, beanMethod = "updateProductName",
+                    operation = @Operation(operationId = "updateProductName", summary = "Update product name",
                             parameters = {
                                     @Parameter(in = ParameterIn.PATH, name = "franchiseId"),
                                     @Parameter(in = ParameterIn.PATH, name = "branchId"),
@@ -105,17 +86,21 @@ public class RouterRest {
                             }))
     })
     @Bean
-    public RouterFunction<ServerResponse> franchiseRoutes(FranchiseHandler handler) {
-        return route(POST("/api/franchises"), handler::createFranchise)
-                .andRoute(GET("/api/franchises"), handler::getAllFranchises)
-                .andRoute(POST("/api/franchises/{franchiseId}/branches"), handler::addBranchToFranchise)
-                .andRoute(GET("/api/franchises/{franchiseId}"), handler::getFranchiseById)
-                .andRoute(POST("/api/franchises/{franchiseId}/branches/{branchId}/products"), handler::addProductToBranch)
-                .andRoute(DELETE("/api/franchises/{franchiseId}/branches/{branchId}/products/{productId}"), handler::deleteProduct)
-                .andRoute(PUT("/api/franchises/{franchiseId}/branches/{branchId}/products/{productId}/stock"), handler::updateProductStock)
-                .andRoute(GET("/api/franchises/{franchiseId}/max-stock"), handler::getMaxStockProducts)
-                .andRoute(PUT("/api/franchises/{franchiseId}/name"), handler::updateFranchiseName)
-                .andRoute(PUT("/api/franchises/{franchiseId}/branches/{branchId}/name"), handler::updateBranchName)
-                .andRoute(PUT("/api/franchises/{franchiseId}/branches/{branchId}/products/{productId}/name"), handler::updateProductName);
+    public RouterFunction<ServerResponse> franchiseRoutes(
+            FranchiseHandler franchiseHandler,
+            BranchHandler branchHandler,
+            ProductHandler productHandler
+    ) {
+        return route(POST("/api/franchises"), franchiseHandler::createFranchise)
+                .andRoute(GET("/api/franchises"), franchiseHandler::getAllFranchises)
+                .andRoute(GET("/api/franchises/{franchiseId}"), franchiseHandler::getFranchiseById)
+                .andRoute(GET("/api/franchises/{franchiseId}/max-stock"), franchiseHandler::getMaxStockProducts)
+                .andRoute(PUT("/api/franchises/{franchiseId}/name"), franchiseHandler::updateFranchiseName)
+                .andRoute(POST("/api/franchises/{franchiseId}/branches"), branchHandler::addBranchToFranchise)
+                .andRoute(PUT("/api/franchises/{franchiseId}/branches/{branchId}/name"), branchHandler::updateBranchName)
+                .andRoute(POST("/api/franchises/{franchiseId}/branches/{branchId}/products"), productHandler::addProductToBranch)
+                .andRoute(DELETE("/api/franchises/{franchiseId}/branches/{branchId}/products/{productId}"), productHandler::deleteProduct)
+                .andRoute(PUT("/api/franchises/{franchiseId}/branches/{branchId}/products/{productId}/stock"), productHandler::updateProductStock)
+                .andRoute(PUT("/api/franchises/{franchiseId}/branches/{branchId}/products/{productId}/name"), productHandler::updateProductName);
     }
 }

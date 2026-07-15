@@ -8,6 +8,6 @@ public interface ProductRepository {
 
     Mono<Product> save(Product product);
 
-    Mono<Product> findById(Integer id);
+    Mono<Product> findById(String id);
 
 }

@@ -1,49 +1,52 @@
 package com.reto.franchise.mongo;
 
 import com.reto.franchise.model.exception.BusinessException;
-import com.reto.franchise.model.franchise.Franchise;
 import com.reto.franchise.model.product.Product;
 import com.reto.franchise.model.product.gateways.ProductRepository;
-import com.reto.franchise.mongo.mapper.FranchiseMapper;
-import com.reto.franchise.mongo.repository.FranchiseMongoDBRepository;
+import com.reto.franchise.mongo.mapper.ProductMapper;
+import com.reto.franchise.mongo.repository.ProductMongoDBRepository;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.Optional;
+
 @Component
+@Slf4j
 @RequiredArgsConstructor
 public class ProductMongoAdapter implements ProductRepository {
 
-    private final FranchiseMongoDBRepository mongoRepository;
-    private final FranchiseMapper mapper;
+    private final ProductMongoDBRepository mongoRepository;
+    private final ProductMapper mapper;
 
     @Override
     @CircuitBreaker(name = "mongoCircuitBreaker", fallbackMethod = "saveFallback")
     public Mono<Product> save(Product product) {
-        return Mono.just(product);
+        return Mono.just(product)
+                .map(mapper::toDocument)
+                .flatMap(mongoRepository::save)
+                .map(mapper::toDomain);
     }
 
     @Override
-    @CircuitBreaker(name = "mongoCircuitBreaker", fallbackMethod = "finByIdFallback")
-    public Mono<Product> findById(Integer id) {
-        return mongoRepository.findAll()
-                .flatMap(franchiseDoc -> franchiseDoc.getBranches() != null ?
-                        Flux.fromIterable(franchiseDoc.getBranches()) : Flux.empty())
-                .flatMap(branchDoc -> branchDoc.getProducts() != null ?
-                        Flux.fromIterable(branchDoc.getProducts()) : Flux.empty())
-                .filter(productDoc -> productDoc.getId().equals(id))
-                .next()
-                .map(mapper::toProductDomain);
+    @CircuitBreaker(name = "mongoCircuitBreaker", fallbackMethod = "findByIdFallback")
+    public Mono<Product> findById(String id) {
+        return mongoRepository.findById(id)
+                .map(mapper::toDomain);
     }
 
-    public Mono<Franchise> finByIdFallback(String id, Throwable error) {
-        return Mono.error(new BusinessException("Base de datos no disponible temporalmente. Intente más tarde."));
+    @SuppressWarnings("unused")
+    public Mono<Product> findByIdFallback(String id, Throwable error) {
+        log.warn("Fallback findById activated for product id={}", id, error);
+        return Mono.error(new BusinessException("Database temporarily unavailable. Please try again later."));
     }
 
-    public Mono<Franchise> saveFallback(Franchise franchise, Throwable error) {
-        System.out.println("🚨 Fallo al guardar la franquicia: " + franchise.getName());
-        return Mono.error(new BusinessException("Error de conexión al guardar en la base de datos."));
+    @SuppressWarnings("unused")
+    public Mono<Product> saveFallback(Product product, Throwable error) {
+        log.error("Fallback save activated for product id={}",
+                Optional.ofNullable(product).map(Product::getId).orElse("unknown"), error);
+        return Mono.error(new BusinessException("Database connection error while saving."));
     }
 }

@@ -3,45 +3,50 @@ package com.reto.franchise.mongo;
 import com.reto.franchise.model.branch.Branch;
 import com.reto.franchise.model.branch.gateways.BranchRepository;
 import com.reto.franchise.model.exception.BusinessException;
-import com.reto.franchise.model.franchise.Franchise;
-import com.reto.franchise.mongo.mapper.FranchiseMapper;
-import com.reto.franchise.mongo.repository.FranchiseMongoDBRepository;
+import com.reto.franchise.mongo.mapper.BranchMapper;
+import com.reto.franchise.mongo.repository.BranchMongoDBRepository;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
+import java.util.Optional;
+
 @Component
+@Slf4j
 @RequiredArgsConstructor
 public class BranchMongoAdapter implements BranchRepository {
 
-    private final FranchiseMongoDBRepository mongoRepository;
-    private final FranchiseMapper mapper;
+    private final BranchMongoDBRepository mongoRepository;
+    private final BranchMapper mapper;
 
     @Override
     @CircuitBreaker(name = "mongoCircuitBreaker", fallbackMethod = "saveFallback")
     public Mono<Branch> save(Branch branch) {
-        return Mono.just(branch);
+        return Mono.just(branch)
+                .map(mapper::toDocument)
+                .flatMap(mongoRepository::save)
+                .map(mapper::toDomain);
     }
 
     @Override
-    @CircuitBreaker(name = "mongoCircuitBreaker", fallbackMethod = "finByIdFallback")
+    @CircuitBreaker(name = "mongoCircuitBreaker", fallbackMethod = "findByIdFallback")
     public Mono<Branch> findById(String id) {
-        return mongoRepository.findAll()
-                .flatMap(franchiseDoc -> franchiseDoc.getBranches() != null ?
-                        reactor.core.publisher.Flux.fromIterable(franchiseDoc.getBranches()) :
-                        reactor.core.publisher.Flux.empty())
-                .filter(branchDoc -> branchDoc.getId().equals(id))
-                .next()
-                .map(mapper::toBranchDomain);
+        return mongoRepository.findById(id)
+                .map(mapper::toDomain);
     }
 
-    public Mono<Franchise> finByIdFallback(String id, Throwable error) {
-        return Mono.error(new BusinessException("Base de datos no disponible temporalmente. Intente más tarde."));
+    @SuppressWarnings("unused")
+    public Mono<Branch> findByIdFallback(String id, Throwable error) {
+        log.warn("Fallback findById activated for branch id={}", id, error);
+        return Mono.error(new BusinessException("Database temporarily unavailable. Please try again later."));
     }
 
-    public Mono<Franchise> saveFallback(Franchise franchise, Throwable error) {
-        System.out.println("🚨 Fallo al guardar la franquicia: " + franchise.getName());
-        return Mono.error(new BusinessException("Error de conexión al guardar en la base de datos."));
+    @SuppressWarnings("unused")
+    public Mono<Branch> saveFallback(Branch branch, Throwable error) {
+        log.error("Fallback save activated for branch id={}",
+                Optional.ofNullable(branch).map(Branch::getId).orElse("unknown"), error);
+        return Mono.error(new BusinessException("Database connection error while saving."));
     }
 }

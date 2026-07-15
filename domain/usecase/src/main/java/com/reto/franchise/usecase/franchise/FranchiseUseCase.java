@@ -3,243 +3,125 @@ package com.reto.franchise.usecase.franchise;
 import com.reto.franchise.model.branch.Branch;
 import com.reto.franchise.model.exception.BusinessException;
 import com.reto.franchise.model.exception.InvalidDataException;
-import com.reto.franchise.model.exception.BranchNotFoundException;
-import com.reto.franchise.model.exception.BranchAlreadyExistsException;
-import com.reto.franchise.model.exception.ProductNotFoundException;
-import com.reto.franchise.model.exception.ProductAlreadyExistsException;
 import com.reto.franchise.model.franchise.Franchise;
 import com.reto.franchise.model.franchise.gateways.FranchiseRepository;
 import com.reto.franchise.model.product.Product;
-import lombok.RequiredArgsConstructor;
+import com.reto.franchise.usecase.branch.BranchUseCase;
+import com.reto.franchise.usecase.product.ProductUseCase;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.function.UnaryOperator;
-
-@RequiredArgsConstructor
 public class FranchiseUseCase {
 
     private final FranchiseRepository franchiseRepository;
+    private final BranchUseCase branchUseCase;
+    private final ProductUseCase productUseCase;
 
     private static final String FRANCHISE_NOT_FOUND = "No se encontró la franquicia con ID: ";
-    private static final String INVALID_STOCK = "El stock es inválido o no puede ser negativo: ";
-    private static final String BRANCH_NOT_FOUND = "No se encontró la rama con ID: ";
-    private static final String BRANCH_ALREADY_EXISTS = "La rama con ID ya existe: ";
-    private static final String PRODUCT_NOT_FOUND = "No se encontró el producto con ID: ";
-    private static final String PRODUCT_ALREADY_EXISTS = "El producto con ID ya existe: ";
+    private static final String REQUIRED_FIELD = "El campo es obligatorio: ";
+    private static final String INVALID_NAME = "El nombre no puede estar vacío";
+    private static final String FRANCHISE_ID_FIELD = "franchiseId";
 
-    /**
-     * Functional Criterion 1: Create a new franchise
-     */
+    public FranchiseUseCase(
+            FranchiseRepository franchiseRepository,
+            BranchUseCase branchUseCase,
+            ProductUseCase productUseCase
+    ) {
+        this.franchiseRepository = franchiseRepository;
+        this.branchUseCase = branchUseCase;
+        this.productUseCase = productUseCase;
+    }
+
+    // Functional criterion: create a new franchise
     public Mono<Franchise> createFranchise(Franchise franchise) {
-        return franchiseRepository.save(franchise);
+        return validateFranchiseForCreate(franchise)
+                .flatMap(validFranchise -> Mono.defer(() -> franchiseRepository.save(validFranchise)));
     }
 
-    /**
-     * Functional Criterion 2: Add a branch to a franchise
-     */
+    // Functional criterion: add a branch to a franchise
     public Mono<Franchise> addBranchToFranchise(String franchiseId, Branch newBranch) {
-        return franchiseRepository.findById(franchiseId)
-                .switchIfEmpty(Mono.error(new BusinessException(FRANCHISE_NOT_FOUND + franchiseId)))
-                .flatMap(franchise -> Flux.fromIterable(branchesOrEmpty(franchise))
-                        .filter(b -> b.getId().equals(newBranch.getId()))
-                        .next()
-                        .flatMap(existing -> Mono.<Franchise>error(
-                                new BranchAlreadyExistsException(BRANCH_ALREADY_EXISTS + newBranch.getId())))
-                        .switchIfEmpty(Mono.just(franchise))
-                )
-                .flatMap(franchise -> Flux.concat(Flux.fromIterable(branchesOrEmpty(franchise)), Mono.just(newBranch))
-                        .collectList()
-                        .flatMap(updatedBranches -> franchiseRepository.save(franchise.toBuilder()
-                                .branches(updatedBranches)
-                                .build())));
+        return branchUseCase.addBranchToFranchise(franchiseId, newBranch);
     }
 
-    /**
-     * Functional Criterion 3: Add a product to a specific branch (from the root)
-     */
+    // Functional criterion: add a product to a branch
     public Mono<Franchise> addProductToBranch(String franchiseId, String branchId, Product newProduct) {
-        return franchiseRepository.findById(franchiseId)
-                .switchIfEmpty(Mono.error(new BusinessException(FRANCHISE_NOT_FOUND + franchiseId)))
-                .flatMap(franchise -> {
-                    List<Branch> branches = branchesOrEmpty(franchise);
-                    return findBranchOrError(branches, branchId)
-                            .flatMap(branch -> ensureProductDoesNotExist(branch, newProduct.getId())
-                                    .then(Flux.concat(Flux.fromIterable(productsOrEmpty(branch)), Mono.just(newProduct))
-                                            .collectList()
-                                            .map(updatedProducts -> branch.toBuilder().products(updatedProducts).build())))
-                            .flatMap(updatedBranch -> replaceBranch(branches, branchId, updatedBranch))
-                            .map(updatedBranches -> franchise.toBuilder().branches(updatedBranches).build());
-                })
-                .flatMap(franchiseRepository::save);
+        return productUseCase.addProductToBranch(franchiseId, branchId, newProduct);
     }
 
-    /**
-     * Functional Criterion 4: Remove a product from a specific branch
-     */
+    // Functional criterion: delete a product from a branch
     public Mono<Franchise> deleteProductFromBranch(String franchiseId, String branchId, String productId) {
-        return franchiseRepository.findById(franchiseId)
-                .switchIfEmpty(Mono.error(new BusinessException(FRANCHISE_NOT_FOUND + franchiseId)))
-                .flatMap(franchise -> {
-                    List<Branch> branches = branchesOrEmpty(franchise);
-                    return findBranchOrError(branches, branchId)
-                            .flatMap(branch -> ensureProductExists(branch, productId)
-                                    .then(removeProductById(productsOrEmpty(branch), productId)
-                                            .map(updatedProducts -> branch.toBuilder().products(updatedProducts).build())))
-                            .flatMap(updatedBranch -> replaceBranch(branches, branchId, updatedBranch))
-                            .map(updatedBranches -> franchise.toBuilder().branches(updatedBranches).build());
-                })
-                .flatMap(franchiseRepository::save);
+        return productUseCase.deleteProductFromBranch(franchiseId, branchId, productId);
     }
 
-    /**
-     * Functional Criterion 5: Modify a product's stock
-     */
+    // Functional criterion: update product stock
     public Mono<Franchise> updateProductStock(String franchiseId, String branchId, String productId, Integer newStock) {
-        return Mono.justOrEmpty(newStock)
-                .filter(stock -> stock >= 0)
-                .switchIfEmpty(Mono.error(new InvalidDataException(INVALID_STOCK + newStock)))
-                .flatMap(validStock -> franchiseRepository.findById(franchiseId)
-                        .switchIfEmpty(Mono.error(new BusinessException(FRANCHISE_NOT_FOUND + franchiseId)))
-                        .flatMap(franchise -> {
-                            List<Branch> branches = branchesOrEmpty(franchise);
-                            return findBranchOrError(branches, branchId)
-                                    .flatMap(branch -> ensureProductExists(branch, productId)
-                                            .then(updateProductById(productsOrEmpty(branch), productId,
-                                                            product -> product.toBuilder().stock(validStock).build())
-                                                    .map(updatedProducts -> branch.toBuilder().products(updatedProducts).build())))
-                                    .flatMap(updatedBranch -> replaceBranch(branches, branchId, updatedBranch))
-                                    .map(updatedBranches -> franchise.toBuilder().branches(updatedBranches).build());
-                        }))
-                .flatMap(franchiseRepository::save);
+        return productUseCase.updateProductStock(franchiseId, branchId, productId, newStock);
     }
 
-    /**
-     * Functional Criterion 6: Get the highest-stock product per branch
-     */
+    // Functional criterion: get max stock product per branch
     public Mono<Franchise> getProductMaxStock(String franchiseId) {
-        return franchiseRepository.findByIdWithMaxStockProducts(franchiseId)
-                .switchIfEmpty(Mono.error(new BusinessException(FRANCHISE_NOT_FOUND + franchiseId)));
+        return normalizeFranchiseId(franchiseId)
+                .flatMap(normalizedFranchiseId -> Mono.defer(() -> franchiseRepository.findByIdWithMaxStockProducts(normalizedFranchiseId))
+                        .switchIfEmpty(Mono.error(new BusinessException(FRANCHISE_NOT_FOUND + normalizedFranchiseId))));
     }
 
-    /**
-     * Functional Criterion 7: Update franchise name
-     */
+    // Functional criterion: update franchise name
     public Mono<Franchise> updateFranchiseName(String franchiseId, String newName) {
-        return franchiseRepository.findById(franchiseId)
-                .flatMap(franchise -> franchiseRepository.save(
-                        franchise.toBuilder()
-                                .name(newName)
-                                .build()
-                ))
-                .switchIfEmpty(Mono.error(new BusinessException(FRANCHISE_NOT_FOUND + franchiseId)));
+        return Mono.zip(
+                        normalizeFranchiseId(franchiseId),
+                        normalizeName(newName)
+                )
+                .flatMap(tuple -> Mono.defer(() -> franchiseRepository.findById(tuple.getT1())
+                        .switchIfEmpty(Mono.error(new BusinessException(FRANCHISE_NOT_FOUND + tuple.getT1())))
+                        .flatMap(franchise -> franchiseRepository.save(franchise.toBuilder().name(tuple.getT2()).build()))));
     }
 
-    /**
-     * Update a branch name
-     */
+    // Functional criterion: update branch name
     public Mono<Franchise> updateBranchName(String franchiseId, String branchId, String newName) {
-        return franchiseRepository.findById(franchiseId)
-                .switchIfEmpty(Mono.error(new BusinessException(FRANCHISE_NOT_FOUND + franchiseId)))
-                .flatMap(franchise -> {
-                    List<Branch> branches = branchesOrEmpty(franchise);
-                    return findBranchOrError(branches, branchId)
-                            .map(branch -> branch.toBuilder().name(newName).build())
-                            .flatMap(updatedBranch -> replaceBranch(branches, branchId, updatedBranch))
-                            .map(updatedBranches -> franchise.toBuilder().branches(updatedBranches).build());
-                })
-                .flatMap(franchiseRepository::save);
+        return branchUseCase.updateBranchName(franchiseId, branchId, newName);
     }
 
-    /**
-     * Update a product name
-     */
+    // Functional criterion: update product name
     public Mono<Franchise> updateProductName(String franchiseId, String branchId, String productId, String newName) {
-        return franchiseRepository.findById(franchiseId)
-                .switchIfEmpty(Mono.error(new BusinessException(FRANCHISE_NOT_FOUND + franchiseId)))
-                .flatMap(franchise -> {
-                    List<Branch> branches = branchesOrEmpty(franchise);
-                    return findBranchOrError(branches, branchId)
-                            .flatMap(branch -> ensureProductExists(branch, productId)
-                                    .then(updateProductById(productsOrEmpty(branch), productId,
-                                                    product -> product.toBuilder().name(newName).build())
-                                            .map(updatedProducts -> branch.toBuilder().products(updatedProducts).build())))
-                            .flatMap(updatedBranch -> replaceBranch(branches, branchId, updatedBranch))
-                            .map(updatedBranches -> franchise.toBuilder().branches(updatedBranches).build());
-                })
-                .flatMap(franchiseRepository::save);
+        return productUseCase.updateProductName(franchiseId, branchId, productId, newName);
     }
 
+    // Functional criterion: get franchise by id
     public Mono<Franchise> getFranchiseById(String id) {
-        return franchiseRepository.findById(id)
-                .switchIfEmpty(Mono.error(new BusinessException(FRANCHISE_NOT_FOUND + id)));
+        return normalizeFranchiseId(id)
+                .flatMap(normalizedId -> Mono.defer(() -> franchiseRepository.findById(normalizedId))
+                        .switchIfEmpty(Mono.error(new BusinessException(FRANCHISE_NOT_FOUND + normalizedId))));
     }
 
-    /**
-     * Flux returning all franchises
-     */
+    // Functional criterion: list all franchises
     public Flux<Franchise> getAllFranchises() {
         return franchiseRepository.findAll();
     }
 
-    private List<Branch> branchesOrEmpty(Franchise franchise) {
-        return Optional.ofNullable(franchise.getBranches()).orElse(Collections.emptyList());
+    private Mono<Franchise> validateFranchiseForCreate(Franchise franchise) {
+        return Mono.justOrEmpty(franchise)
+                .switchIfEmpty(Mono.error(new InvalidDataException(REQUIRED_FIELD + "franchise")))
+                .flatMap(value -> Mono.zip(
+                                normalizeFranchiseId(value.getId()),
+                                normalizeName(value.getName())
+                        )
+                        .map(tuple -> value.toBuilder()
+                                .id(tuple.getT1())
+                                .name(tuple.getT2())
+                                .build()));
     }
 
-    private List<Product> productsOrEmpty(Branch branch) {
-        return Optional.ofNullable(branch.getProducts()).orElse(Collections.emptyList());
+    private Mono<String> normalizeName(String name) {
+        return Mono.justOrEmpty(name)
+                .map(String::trim)
+                .filter(trimmed -> !trimmed.isBlank())
+                .switchIfEmpty(Mono.error(new InvalidDataException(INVALID_NAME)));
     }
 
-    private Mono<Branch> findBranchOrError(List<Branch> branches, String branchId) {
-        return Flux.fromIterable(branches)
-                .filter(branch -> branch.getId().equals(branchId))
-                .next()
-                .switchIfEmpty(Mono.error(new BranchNotFoundException(BRANCH_NOT_FOUND + branchId)));
+    private Mono<String> normalizeFranchiseId(String id) {
+        return Mono.justOrEmpty(id)
+                .map(String::trim)
+                .filter(trimmed -> !trimmed.isBlank())
+                .switchIfEmpty(Mono.error(new InvalidDataException(REQUIRED_FIELD + FRANCHISE_ID_FIELD)));
     }
-
-    private Mono<Void> ensureProductDoesNotExist(Branch branch, String productId) {
-        return Flux.fromIterable(productsOrEmpty(branch))
-                .filter(product -> product.getId().equals(productId))
-                .hasElements()
-                .filter(Boolean.FALSE::equals)
-                .switchIfEmpty(Mono.error(new ProductAlreadyExistsException(PRODUCT_ALREADY_EXISTS + productId)))
-                .then();
-    }
-
-    private Mono<Void> ensureProductExists(Branch branch, String productId) {
-        return Flux.fromIterable(productsOrEmpty(branch))
-                .filter(product -> product.getId().equals(productId))
-                .hasElements()
-                .filter(Boolean.TRUE::equals)
-                .switchIfEmpty(Mono.error(new ProductNotFoundException(PRODUCT_NOT_FOUND + productId)))
-                .then();
-    }
-
-    private Mono<List<Branch>> replaceBranch(List<Branch> branches, String branchId, Branch updatedBranch) {
-        return Flux.fromIterable(branches)
-                .map(branch -> branch.getId().equals(branchId) ? updatedBranch : branch)
-                .collectList();
-    }
-
-    private Mono<List<Product>> removeProductById(List<Product> products, String productId) {
-        return Flux.fromIterable(products)
-                .filter(product -> !product.getId().equals(productId))
-                .collectList();
-    }
-
-    private Mono<List<Product>> updateProductById(
-            List<Product> products,
-            String productId,
-            UnaryOperator<Product> updater
-    ) {
-        return Flux.fromIterable(products)
-                .map(product -> product.getId().equals(productId) ? updater.apply(product) : product)
-                .collectList();
-    }
-
-
-
 }

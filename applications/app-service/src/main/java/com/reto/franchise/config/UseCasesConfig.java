@@ -1,7 +1,9 @@
 package com.reto.franchise.config;
 
 import com.reto.franchise.model.franchise.gateways.FranchiseRepository;
+import com.reto.franchise.usecase.branch.BranchUseCase;
 import com.reto.franchise.usecase.franchise.FranchiseUseCase;
+import com.reto.franchise.usecase.product.ProductUseCase;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
@@ -15,7 +17,21 @@ import org.springframework.context.annotation.FilterType;
         useDefaultFilters = false)
 public class UseCasesConfig {
         @Bean
-        public FranchiseUseCase franchiseUseCase(FranchiseRepository franchiseRepository) {
-                return new FranchiseUseCase(franchiseRepository);
+        public BranchUseCase branchUseCase(FranchiseRepository franchiseRepository) {
+                return new BranchUseCase(franchiseRepository);
+        }
+
+        @Bean
+        public ProductUseCase productUseCase(FranchiseRepository franchiseRepository) {
+                return new ProductUseCase(franchiseRepository);
+        }
+
+        @Bean
+        public FranchiseUseCase franchiseUseCase(
+                FranchiseRepository franchiseRepository,
+                BranchUseCase branchUseCase,
+                ProductUseCase productUseCase
+        ) {
+                return new FranchiseUseCase(franchiseRepository, branchUseCase, productUseCase);
         }
 }
